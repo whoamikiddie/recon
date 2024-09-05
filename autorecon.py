@@ -11,11 +11,10 @@ import threading
 import time
 from colorama import Fore, init
 
-# Initialize colorama and logging
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Path to the configuration file
+
 CONFIG_FILE = 'config.json'
 
 def random_color():
@@ -115,10 +114,10 @@ def spinner(stop_event):
 def run_command(command, tool_name, output_file=None, report_message=None):
     logging.info(f"{random_color()}[*] Running {tool_name}")
 
-    # Create a stop event for the spinner
+
     stop_event = threading.Event()
 
-    # Start spinner in a separate thread
+
     spinner_thread = threading.Thread(target=spinner, args=(stop_event,))
     spinner_thread.daemon = True
     spinner_thread.start()
@@ -143,9 +142,9 @@ def run_command(command, tool_name, output_file=None, report_message=None):
         logging.info("Process was interrupted by the user.")
         sys.exit(1)
     finally:
-        # Signal the spinner thread to stop
+
         stop_event.set()
-        spinner_thread.join()  # Ensure the spinner stops
+        spinner_thread.join()
 
 def enum_subdomains(target, target_dir):
     logging.info(f"{random_color()}[*] Enumerating subdomains")
@@ -229,13 +228,11 @@ def sort_403_links(target_dir):
         logging.error(f"{random_color()}The input file '{input_file}' was not found.")
         return
 
-    # Filter out lines with a 403 status code
+
     fourzerothree_lines = [line for line in lines if line.startswith('403')]
 
-    # Sort the filtered lines by the URL part (after the status code and size)
     sorted_fourzerothree_lines = sorted(fourzerothree_lines, key=lambda x: x.split()[2])
 
-    # Write the sorted lines to a new file
     try:
         with open(output_file, 'w') as file:
             file.writelines(sorted_fourzerothree_lines)
@@ -244,7 +241,6 @@ def sort_403_links(target_dir):
         logging.error(f"{random_color()}An error occurred while writing to the file: {e}")
 
 def main():
-    # Check if config is already set up
     bot_token, chat_id = read_config()
     if not bot_token or not chat_id:
         prompt_for_config()
@@ -271,7 +267,6 @@ def main():
     gobuster_fuzzing(target, target_dir)
     port_scan(target, target_dir)
 
-    # Sort and save 403 links
     sort_403_links(target_dir)
 
 if __name__ == "__main__":
