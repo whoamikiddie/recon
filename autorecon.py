@@ -7,8 +7,7 @@ import logging
 import random
 import requests
 import json
-import threading
-import time
+
 from colorama import Fore, init
 
 init(autoreset=True)
@@ -56,10 +55,11 @@ def write_config(bot_token, chat_id):
 
 def prompt_for_config():
     logging.info(f"{random_color()}[*] Telegram bot token and chat ID are not configured.")
-    bot_token = input("Enter your Telegram bot token: ")
-    chat_id = input("Enter your chat ID: ")
+    bot_token = input("Enter your Telegram bot token: ").strip()
+    chat_id = input("Enter your chat ID: ").strip()
     write_config(bot_token, chat_id)
     logging.info(f"{random_color()}Configuration saved successfully!")
+    logging.info(f"{random_color()}Your Telegram bot URL: https://t.me/{bot_token}")
 
 def send_telegram_message(message):
     bot_token, chat_id = read_config()
@@ -99,8 +99,8 @@ def run_command(command, tool_name, target, output_file=None, report_message=Non
     try:
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if output_file:
-            with open(output_file, 'w') as f:
-                f.write(result.stdout.decode())
+            with open(output_file, 'wb') as f:
+                f.write(result.stdout)
             logging.info(f"{random_color()}[*] {tool_name} completed successfully")
             if report_message:
                 send_telegram_message(report_message)
@@ -121,12 +121,15 @@ def enum_subdomains(target, target_dir):
     run_command(f"subfinder -d {target} -all -recursive", "Subfinder", target,
                 output_file=f"{target_dir}/{target}-subdomain.txt",
                 report_message=f"Subdomain enumeration for {target} completed.")
+
     run_command(f"cat {target_dir}/{target}-subdomain.txt | httpx-toolkit -ports 80,8080,8000,8888 -threads 200", "Httpx Toolkit", target,
                 output_file=f"{target_dir}/{target}-subdomains_alive.txt",
                 report_message=f"Subdomain alive check for {target} completed.")
+
     run_command(f"katana -u {target_dir}/{target}-subdomains_alive.txt -d 5 -ps -pss waybackarchive,commoncrawl,alienvault -kf -jc -fx -ef woff,css,png,svg,jpg,woff2,jpeg,gif,svg -o {target_dir}/{target}-allurls.txt", "Katana", target,
                 output_file=f"{target_dir}/{target}-allurls.txt",
                 report_message=f"URL extraction for {target} completed.")
+
     run_command(f"cat {target_dir}/{target}-allurls.txt | grep -E '\\.txt|\\.log|\\.cache|\\.secret|\\.db|\\.backup|\\.yml|\\.json|\\.gz|\\.rar|\\.zip|\\.config|\\.js$' >> {target_dir}/{target}-sensitive.txt", "Sensitive File Extraction", target,
                 output_file=f"{target_dir}/{target}-sensitive.txt",
                 report_message=f"Sensitive file extraction for {target} completed.")
@@ -136,6 +139,10 @@ def fuzzing(target, target_dir):
     run_command(f"dirsearch -u https://{target}/ -e conf,config,bak,backup,swp,old,db,sql,asp,aspx,aspx~,asp~,py,py~,rb,rb~,php,php~,bak,bkp,cache,cgi,conf,csv,html,inc,jar,js,json,jsp,jsp~,lock,log,rar,old,sql,sql.gz,http://sql.zip,sql.tar.gz,sql~,swp,swp~,tar,tar.bz2,tar.gz,txt,wadl,zip,.log,.xml,.js.,.json -o {target_dir}/dirsearch-{target}.txt", "Dirsearch", target,
                 output_file=f"{target_dir}/dirsearch-{target}.txt",
                 report_message=f"Directory and file fuzzing for {target} completed.")
+
+    run_command(f"ffuf -u https://{target}/ -w /usr/share/wordlists/dirb/common.txt  | anew > {target_dir}/{target}-ffuf.txt","ffuf",target,
+                output_file=f"{target_dir}/{target}-ffuf.txt",
+                report_message=f"ffuf is {target} completed")
 
 def xss_finding(target, target_dir):
     logging.info(f"{random_color()}[*] Finding XSS vulnerabilities")
@@ -149,21 +156,22 @@ def lfi_finding(target, target_dir):
                 output_file=f"{target_dir}/lfi-results.txt",
                 report_message=f"LFI vulnerability finding for {target} completed.")
 
-"""def nuclei_scan(target, target_dir):
-    logging.info(f"{random_color()}[*] Scanning for vulnerabilities with Nuclei")
-    run_command(f"nuclei -list {target_dir}/{target}-subdomains_alive.txt -tags cve,osint,tech", "Nuclei Scan", target,
-                output_file=f"{target_dir}/nuclei-results.txt",
-                report_message=f"Nuclei scan for {target} completed.")
+# Commented out for future feature additions
+# def nuclei_scan(target, target_dir):
+#     logging.info(f"{random_color()}[*] Scanning for vulnerabilities with Nuclei")
+#     run_command(f"nuclei -list {target_dir}/{target}-subdomains_alive.txt -tags cve,osint,tech", "Nuclei Scan", target,
+#                 output_file=f"{target_dir}/nuclei-results.txt",
+#                 report_message=f"Nuclei scan for {target} completed.")
 
-def sql_injection(target, target_dir):
-    logging.info(f"{random_color()}[*] Scanning for SQL injection")
-    run_command(f"cat {target_dir}/{target}-allurls.txt | gau | urldedupe | gf sqli", "SQL Injection Generation", target,
-                output_file=f"{target_dir}/sql.txt",
-                report_message=f"SQL injection target generation for {target} completed.")
-    run_command(f"sqlmap -m {target_dir}/sql.txt --batch --risk=3 --level=5", "SQLMap Scan", target,
-                output_file=f"{target_dir}/sqlmap-results.txt",
-                report_message=f"SQL injection scan for {target} completed.")
-    run_command(f"ghauri -u)"""
+# Commented out for future feature additions
+# def sql_injection(target, target_dir):
+#     logging.info(f"{random_color()}[*] Scanning for SQL injection")
+#     run_command(f"cat {target_dir}/{target}-allurls.txt | gau | urldedupe | gf sqli", "SQL Injection Generation", target,
+#                 output_file=f"{target_dir}/sql.txt",
+#                 report_message=f"SQL injection target generation for {target} completed.")
+#     run_command(f"sqlmap -m {target_dir}/sql.txt --batch --risk=3 --level=5", "SQLMap Scan", target,
+#                 output_file=f"{target_dir}/sqlmap-results.txt",
+#                 report_message=f"SQL injection scanning for {target} completed.")
 
 def main():
     parser = argparse.ArgumentParser(description="Recon tool for enumeration and vulnerability scanning.")
@@ -180,13 +188,20 @@ def main():
             logging.error(f"{random_color()}Tool '{tool}' not found. Please install it before running the script.")
             sys.exit(1)
 
+    # Check if Telegram is configured
+    bot_token, chat_id = read_config()
+
+    if not bot_token or not chat_id:
+        # If not configured, ask user for Telegram configuration
+        prompt_for_config()
+
     # Run tools
     enum_subdomains(target, target_dir)
     fuzzing(target, target_dir)
     xss_finding(target, target_dir)
     lfi_finding(target, target_dir)
-    nuclei_scan(target, target_dir)
-    sql_injection(target, target_dir)
+    # nuclei_scan(target, target_dir)  # Uncomment to enable Nuclei scanning
+    # sql_injection(target, target_dir)  # Uncomment to enable SQL Injection scanning
 
 if __name__ == "__main__":
     main()
