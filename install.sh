@@ -1,34 +1,40 @@
 #!/bin/bash
 
+# Define color variables using tput
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
 BLUE=$(tput setaf 4)
 RESET=$(tput sgr0)
 
-AMASS_VERSION=3.8.2
+
+USERNAME=$(whoami)
 
 
-echo "${RED} ######################################################### ${RESET}"
-echo "${RED} #                 TOOLS FOR BUG BOUNTY                  # ${RESET}"
-echo "${RED} ######################################################### ${RESET}"
-logo(){
-echo "${BLUE}
-                
-                    ██████╗ ██████╗ ██╗  ██╗
-                    ██╔══██╗██╔══██╗██║  ██║
-                    ██████╔╝██████╔╝███████║
-                    ██╔══██╗██╔══██╗██╔══██║
-                    ██████╔╝██████╔╝██║  ██║
-                    ╚═════╝ ╚═════╝ ╚═╝  ╚═╝  ${RESET}"
-                              
-}
-logo
+IP_ADDRESS=$(hostname -I | awk '{print $1}')
+
+# Display the updated banner
+echo -e "${GREEN}
+
+👋 Hey ${USERNAME}
+
+ .------------------------------.
+ |  Tool Name : Open-Source     |
+ |  Name      : @mrrobot 🎖️     |
+ |  IP        : ${IP_ADDRESS}💀 |
+ |         Fsociety             |
+ '------------------------------'
+                 ^      (\_/)
+                 '----- (O.o)
+                        (> <)
+
+${RESET}"
+
 echo ""
 echo ""
-
 
 echo "${GREEN} [+] Updating and installing dependencies ${RESET}"
 echo ""
+
 
 sudo apt-get -y update
 sudo apt-get -y upgrade
@@ -52,9 +58,9 @@ sudo apt-fast install -y python3-pip
 sudo apt-fast install -y python-dnspython
 sudo apt-fast install -y git
 sudo apt-fast install -y npm
-sudo apt-fast install -y nmap phantomjs 
+sudo apt-fast install -y nmap phantomjs
 sudo apt-fast install -y gem
-sudo apt-fast install -y perl 
+sudo apt-fast install -y perl
 sudo apt-fast install -y parallel
 pip3 install jsbeautifier
 echo ""
@@ -67,7 +73,7 @@ curl https://raw.githubusercontent.com/unethicalnoob/aliases/master/bashprofile 
 echo "${BLUE} If it doesn't work, set it manually ${RESET}"
 echo ""
 echo ""
-sar 1 1 >/dev/null 
+sar 1 1 >/dev/null
 
 echo "${GREEN} [+] Installing Golang ${RESET}"
 if [ ! -f /usr/bin/go ];then
@@ -77,11 +83,11 @@ if [ ! -f /usr/bin/go ];then
 	export PATH=$GOROOT/bin:$PATH
 	export GOPATH=$HOME/go
     echo 'export GOROOT=$HOME/.go' >> ~/.bash_profile
-	
-	echo 'export GOPATH=$HOME/go'	>> ~/.bash_profile			
+
+	echo 'export GOPATH=$HOME/go'	>> ~/.bash_profile
 	echo 'export PATH=$GOPATH/bin:$GOROOT/bin:$PATH' >> ~/.bash_profile
-    source ~/.bash_profile 
-else 
+    source ~/.bash_profile
+else
     echo "${BLUE} Golang is already installed${RESET}"
 fi
     break
@@ -179,7 +185,7 @@ echo "${GREEN}#### Installing Domain Enum Tools ####${RESET}"
 
 #install aquatone
 echo "${BLUE} Installing Aquatone ${RESET}"
-go get -u github.com/michenriksen/aquatone 
+go get -u github.com/michenriksen/aquatone
 echo "${BLUE} done ${RESET}"
 echo ""
 
@@ -187,7 +193,7 @@ echo ""
 echo "${BLUE} subdomainizer ${RESET}"
 git clone https://github.com/nsonaniya2010/SubDomainizer.git ~/tools/SubDomainizer
 cd ~/tools/SubDomainizer && chmod +x SubDomainizer.py
-sudo pip3 install -r requirements.txt 
+sudo pip3 install -r requirements.txt
 echo "${BLUE} done ${RESET}"
 echo ""
 
@@ -269,7 +275,7 @@ echo "${BLUE} done${RESET}"
 echo ""
 
 echo "${BLUE} installing XSStrike${RESET}"
-git clone https://github.com/s0md3v/XSStrike.git ~/tools/XSStrike 
+git clone https://github.com/s0md3v/XSStrike.git ~/tools/XSStrike
 cd ~/tools/XSStrike
 sudo pip3 install -r requirements.txt
 echo "${BLUE} done${RESET}"
@@ -328,7 +334,7 @@ echo ""
 
 #install S3Scanner
 echo "${BLUE} installing S3Scanner${RESET}"
-git clone https://github.com/sa7mon/S3Scanner.git ~/tools/S3Scanner 
+git clone https://github.com/sa7mon/S3Scanner.git ~/tools/S3Scanner
 cd ~/tools/S3Scanner
 sudo pip3 install -r requirements.txt
 echo "${BLUE} done${RESET}"
@@ -366,7 +372,7 @@ echo ""
 sar 1 1 >/dev/null
 
 
-echo "${GREEN} #### Installing CMS Tools #### ${RESET}" 
+echo "${GREEN} #### Installing CMS Tools #### ${RESET}"
 #install CMSmap
 echo "${BLUE} installing CMSmap${RESET}"
 git clone https://github.com/Dionach/CMSmap.git ~/tools/CMS/CMSmap
@@ -380,7 +386,7 @@ git clone https://github.com/jekyc/wig.git ~/tools/CMS/wig
 cd ~/tools/wig
 sudo python3 setup.py install
 echo "${BLUE} done${RESET}"
-echo "" 
+echo ""
 
 #install CMSeek
 echo "${BLUE} installing CMSeek${RESET}"
@@ -448,7 +454,7 @@ echo ""
 
 echo "${BLUE} gitsearch${RESET}"
 git clone https://github.com/gwen001/github-search.git ~/tools/GIT/github-search
-cd ~/tools/GIT/github-search 
+cd ~/tools/GIT/github-search
 sudo pip3 install -r  requirements3.txt
 echo "${BLUE} done${RESET}"
 echo ""
@@ -826,7 +832,7 @@ cd ~ && echo -e "Downloading amass version ${AMASS_VERSION} ..." && wget -q http
 cd ~ && rm -rf amass_linux_amd64* amass_linux_amd64.zip*
 echo "${BLUE} done${RESET}"
 echo ""
-unzip -q temp.zip && 
+unzip -q temp.zip &&
 
 
 echo "${BLUE} installing impacket${RESET}"
