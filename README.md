@@ -1,4 +1,3 @@
-Certainly! Here's a refined and well-structured README file without sections for license, contribution, and contact. I've focused on making it clear and visually appealing.
 
 ---
 
@@ -82,4 +81,4 @@ The script logs activities and errors to the console, providing insights into su
 
 ---
 
-Feel free to adjust any part of the README to better fit your needs!
+
