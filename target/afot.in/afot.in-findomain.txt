@@ -1,0 +1,24 @@
+
+Target ==> afot.in
+
+Searching in the Crtsh database API... 🔍
+Searching in the Threatcrowd API... 🔍
+Searching in the Sublist3r API... 🔍
+Searching in the CertSpotter API... 🔍
+Searching in the AnubisDB API... 🔍
+Searching in the Urlscan.io API... 🔍
+Searching in the Threatminer API... 🔍
+Searching in the Archive.org API... 🔍
+❌ A error has occurred while querying the Crtsh database. Error: db error: ERROR: Sorry, the "certificate_identity" table has been superseded by a Full Text Search index on the "certificate" table.. Trying the API method...
+Searching in the Crtsh API... 🔍
+
+
+afot.in
+www.afot.in
+fake.afot.in
+
+Job finished in 2 seconds.
+>> 📁 Subdomains for afot.in were saved in: ./afot.in.txt 😀
+
+Good luck Hax0r 💀!
+

