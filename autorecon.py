@@ -38,6 +38,31 @@ def get_ip_address(target):
         logging.error(f"{random_color()}Error getting IP address: {err}")
         return None
 
+def detect_waf(target):
+    try:
+        result = subprocess.run(['wafw00f', target], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        output = result.stdout.strip()
+
+        # Parse the output to find WAF name
+        waf_name = "Unknown"
+        if "The site" in output and "is behind" in output:
+            lines = output.split('\n')
+            for line in lines:
+                if "is behind" in line:
+                    parts = line.split('is behind')
+                    if len(parts) > 1:
+                        waf_name = parts[1].strip().split()[0]  # Extract WAF name
+                    break
+
+        if result.returncode == 0:
+            return waf_name
+        else:
+            return "WAF detection failed"
+    except FileNotFoundError:
+        logging.error(f"{random_color()}WAF detection tool 'wafw00f' not found. Please install it before running the script.")
+        return None
+
+
 def read_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as f:
@@ -129,7 +154,7 @@ def enum_subdomains(target, target_dir, notify_telegram):
                 report_message=f"Assetfinder for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
-    run_command(f"findomain --target {target} --output", "Findomain", target,
+    run_command(f"findomain --target {target} --output {target_dir}/{target}-findomain.txt", "Findomain", target,
                 output_file=f"{target_dir}/{target}-findomain.txt",
                 report_message=f"Findomain for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
@@ -149,13 +174,14 @@ def enum_subdomains(target, target_dir, notify_telegram):
                 report_message=f"Sensitive file extraction for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
-def print_banner(target, ip_address):
+def print_banner(target, ip_address, waf_info):
     banner = f"""
 {Fore.GREEN}-------------------------------------------------
 {Fore.YELLOW}          WELCOME TO RECON TOOL
 {Fore.GREEN}-------------------------------------------------
 {Fore.CYAN}Target: {Fore.WHITE}{target}
 {Fore.CYAN}IP Address: {Fore.WHITE}{ip_address}
+{Fore.CYAN}WAF Information: {Fore.WHITE}{waf_info}
 {Fore.GREEN}-------------------------------------------------
     """
     logging.info(banner)
@@ -170,7 +196,8 @@ def main():
     ip_address = get_ip_address(target)
 
     if ip_address:
-        print_banner(target, ip_address)
+        waf_info = detect_waf(target) if check_tool('wafw00f') else "WAF detection tool not installed."
+        print_banner(target, ip_address, waf_info)
     else:
         logging.warning(f"{random_color()}Unable to determine IP address for target '{target}'.")
 
