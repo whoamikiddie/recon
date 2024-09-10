@@ -6,6 +6,7 @@ import socket
 import logging
 import random
 import requests
+from datetime import datetime
 import json
 from colorama import Fore, init
 
@@ -161,28 +162,24 @@ def merge_and_sort_subdomains(target, target_dir, notify_telegram):
     ]
     output_file = f"{target_dir}/{target}-sorted-subdomains.txt"
     
-    # Check if input files exist
+
     for file in input_files:
         if not os.path.isfile(file):
             logging.error(f"Input file not found: {file}")
             return
 
-    # Use a set to store unique subdomains
     subdomains = set()
     
-    # Read and merge files
     for file in input_files:
         with open(file, 'r') as f:
             for line in f:
                 subdomains.add(line.strip())
     
-    # Sort subdomains and write to output file
     sorted_subdomains = sorted(subdomains)
     with open(output_file, 'w') as f:
         for subdomain in sorted_subdomains:
             f.write(f"{subdomain}\n")
     
-    # Check if the output file was created successfully
     if not os.path.isfile(output_file):
         logging.error(f"Output file not created: {output_file}")
         return
@@ -201,45 +198,8 @@ def port_scanning(target, target_dir, notify_telegram):
                 output_file=f"{target_dir}/{target}-naabu.txt",
                 report_message=f"Naabu scan for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
-
-
-def filter_status_codes(input_file, output_file, status_codes):
-    """Filter lines based on status codes and save to output file."""
-    with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
-        for line in infile:
-            if any(str(code) in line for code in status_codes):
-                outfile.write(line)
-
-def directory(target, target_dir, notify_telegram):
-    logging.info(f"{random_color()}[*] Directory Search and Fuzzing")
-
-    # Ensure target directory exists
-    if not os.path.isdir(target_dir):
-        logging.error(f"Target directory does not exist: {target_dir}")
-        return
-
-    # Set paths for files
-    raw_output_file = f"{target_dir}/{target}-dirsearch-raw.txt"
-    filtered_output_file = f"{target_dir}/{target}-dirsearch.txt"
-
-    # Construct dirsearch command with output redirection
-    command = f"dirsearch -u {target} -e conf,config,bak,backup,swp,old,db,sql,asp,aspx,aspx~,asp~,py,py~,rb,rb~,php,php~,bak,bkp,cache,cgi,conf,csv,html,inc,jar,js,json,jsp,jsp~,lock,log,rar,old,sql,sql.gz,http://sql.zip,sql.tar.gz,sql~,swp,swp~,tar,tar.bz2,tar.gz,txt,wadl,zip,.log,.xml,.js,.json"
-
-    # Run dirsearch and save raw output
-    run_command(command, "Dirsearch", target,
-                output_file=raw_output_file,
-                report_message=f"Dirsearch for {target} completed." if notify_telegram else None,
-                notify_telegram=notify_telegram)
-
-    # Filter results based on status codes
-    status_codes = [200, 301, 403]
-    filter_status_codes(raw_output_file, filtered_output_file, status_codes)
-
-    # Check if the final output file was created successfully
-    if not os.path.isfile(filtered_output_file):
-        logging.error(f"Filtered output file not created: {filtered_output_file}")
-
-
+    
+# Hidden Link Extractor using Waybackurls
 def link_extractor(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Link Extraction Using  Waybackurls")
 
@@ -247,6 +207,27 @@ def link_extractor(target, target_dir, notify_telegram):
                 output_file=f"{target_dir}/{target}-waybackurls.txt",
                 report_message=f"Waybackurls for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
+
+# Directory Brute-Froce using Dirsearch 
+def directory(target, target_dir, notify_telegram):
+    logging.info(f"{random_color()}[*] Directory bruteforce")
+
+    target_folder = os.path.join(target_dir, target)
+    os.makedirs(target_folder, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = os.path.join(target_folder, f"{timestamp}.txt")
+
+    command = f"dirsearch -u {target} -e conf,config,bak,backup,swp,old,db,sql,asp,aspx,aspx~,asp~,py,py~,rb,rb~,php,php~,bak,bkp,cache,cgi,conf,csv,html,inc,jar,js,json,jsp,jsp~,lock,log,rar,old,sql,sql.gz,http://sql.zip,sql.tar.gz,sql~,swp,swp~,tar,tar.bz2,tar.gz,txt,wadl,zip,.log,.xml,.js,.json -o {output_file}"
+
+    run_command(command, "Dirsearch", target,
+                report_message=f"Dirsearch for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
+
+    logging.info(f"Output file saved to {output_file}")
+                
+
+
 
 def print_banner(target, ip_address, waf_info):
     banner = f"""
@@ -263,11 +244,10 @@ def print_banner(target, ip_address, waf_info):
 def main():
     parser = argparse.ArgumentParser(description="Reconnaissance and vulnerability scanning tool")
     parser.add_argument('target', help="The target domain or IP address to scan")
-    parser.add_argument('--telegram', action='store_true', help="Send results to Telegram")
     args = parser.parse_args()
-
     target = args.target
-    notify_telegram = args.telegram
+
+    notify_telegram = input(f"Do you want to send results to Telegram? (yes/no): ").strip().lower().strip().upper() == 'y'
 
     target_dir = create_target_directory(target)
 
@@ -277,8 +257,6 @@ def main():
         print_banner(target, ip_address, waf_name)
     else:
         logging.warning(f"{random_color()}Unable to determine IP address for target '{target}'.")
-
-    # Check if required tools are installed
     required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "gau", "waybackurls"]
     for tool in required_tools:
         if not check_tool(tool):
