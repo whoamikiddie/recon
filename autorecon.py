@@ -9,6 +9,8 @@ import requests
 from datetime import datetime
 import json
 from colorama import Fore, init
+import time 
+
 
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -154,11 +156,20 @@ def enum_subdomains(target, target_dir, notify_telegram):
                 report_message=f"Assetfinder for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
+    run_command(f"subdominator -d {target} -o {target_dir}/{target}-subdominator.txt", "Subdominator", target,
+                output_file=f"{target_dir}/{target}-subdominator.txt",
+                report_message=f"Subdominator for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
+
+
 
 def merge_and_sort_subdomains(target, target_dir, notify_telegram):
+    logging,info(f"{random_color()}[*] Merging and sorting subdomains")
+    
     input_files = [
         f"{target_dir}/{target}-subdomain.txt",
-        f"{target_dir}/{target}-assetfinder.txt"
+        f"{target_dir}/{target}-assetfinder.txt",
+        f"{target_dir}/{target}-subdominator.txt"
     ]
     output_file = f"{target_dir}/{target}-sorted-subdomains.txt"
     
@@ -185,15 +196,26 @@ def merge_and_sort_subdomains(target, target_dir, notify_telegram):
         return
     
     # Run httpx-toolkit
-    httpx_command = f"httpx-toolkit -l {output_file} -ports 80,8080,8000,8888 -threads 200"
-    run_command(httpx_command, "Httpx Toolkit", target,
+    logging.info(f"{random_color()}[*] Running httpx-toolkit")
+    run_command(f"httpx-toolkit -l {output_file} -ports 80,8080,8000,8888 -threads 200", "Httpx Toolkit", target,
                 output_file=f"{target_dir}/{target}-subdomains_alive.txt",
                 report_message=f"Subdomain alive check for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
+    # Running httpronbe 
+    logging,info(f"{random_color()}[*] Running httprobe")
+    run_command(f"cat {output_file} | httprobe -t 20000 ","Httprobe", target,
+                output_file=f"{target_dir}/{target}-httprobe.txt",
+                report_message=f"Httprobe for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
+
+
+
+    
+
 def port_scanning(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Port Scanning")
-    
+    logging.info(f"{random_color()}[*] Running Naabu Scan")
     run_command(f"naabu -host {target} -tp -silent", "Naabu", target,
                 output_file=f"{target_dir}/{target}-naabu.txt",
                 report_message=f"Naabu scan for {target} completed." if notify_telegram else None,
@@ -207,6 +229,16 @@ def link_extractor(target, target_dir, notify_telegram):
                 output_file=f"{target_dir}/{target}-waybackurls.txt",
                 report_message=f"Waybackurls for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
+
+
+    logging.info(f"{random_color()}[*] Running gau")
+    
+    run_command(f" cat {target_dir}/{target}-subdomains_alive.txt | gau -u -o {target_dir}/{target}-gau.txt", "Gau",target,
+    output_file=f"{target_dir}/{target}-gau.txt",
+    report_message=f"Gau for {target} completed." if notify_telegram else None,
+    notify_telegram=notify_telegram
+    timeout= 300 ) 
+
 
 # Directory Brute-Froce using Dirsearch 
 def directory(target, target_dir, notify_telegram):
@@ -234,7 +266,7 @@ def exploits(target_dir,target,notify_telegram):
                 report_message=f"Sqlmap for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
-    run_command()
+    run_command(f"")
 
 
 
