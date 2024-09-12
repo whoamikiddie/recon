@@ -225,7 +225,16 @@ def directory(target, target_dir, notify_telegram):
                 notify_telegram=notify_telegram)
 
     logging.info(f"Output file saved to {output_file}")
-                
+
+
+def exploits(target_dir,target,notify_telegram):
+    logging.info(f"{random_color()}[*] Exploits")
+    run_command(f"sqlmap -u {target_dir}/{target}-pasql.txt --dbs --tamper=space2comment,between --level=3 --risk=3 --threads=5 --random-agent ", "Sqlmap", target,
+                output_file=f"{target_dir}/{target}-sqlmap.txt",
+                report_message=f"Sqlmap for {target} completed." if notify_telegram else None,
+                notify_telegram=notify_telegram)
+
+    run_command()
 
 
 
@@ -273,7 +282,7 @@ def main():
     port_scanning(target, target_dir, notify_telegram)
     directory(target, target_dir, notify_telegram)
     link_extractor(target, target_dir, notify_telegram)
-
+    exploits(target,target_dir,notify_telegram)
 
 if __name__ == "__main__":
     if not os.path.exists(CONFIG_FILE):
