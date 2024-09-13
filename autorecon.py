@@ -12,6 +12,7 @@ from colorama import Fore, init
 import time 
 
 
+
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -156,24 +157,18 @@ def enum_subdomains(target, target_dir, notify_telegram):
                 report_message=f"Assetfinder for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
-    run_command(f"subdominator -d {target} -o {target_dir}/{target}-subdominator.txt", "Subdominator", target,
-                output_file=f"{target_dir}/{target}-subdominator.txt",
-                report_message=f"Subdominator for {target} completed." if notify_telegram else None,
-                notify_telegram=notify_telegram)
 
-
+    
 
 def merge_and_sort_subdomains(target, target_dir, notify_telegram):
-    logging,info(f"{random_color()}[*] Merging and sorting subdomains")
+    logging.info(f"{random_color()}[*] Merging and sorting subdomains")
     
     input_files = [
         f"{target_dir}/{target}-subdomain.txt",
-        f"{target_dir}/{target}-assetfinder.txt",
-        f"{target_dir}/{target}-subdominator.txt"
+        f"{target_dir}/{target}-assetfinder.txt"
     ]
     output_file = f"{target_dir}/{target}-sorted-subdomains.txt"
     
-
     for file in input_files:
         if not os.path.isfile(file):
             logging.error(f"Input file not found: {file}")
@@ -196,48 +191,36 @@ def merge_and_sort_subdomains(target, target_dir, notify_telegram):
         return
     
     # Run httpx-toolkit
-    logging.info(f"{random_color()}[*] Running httpx-toolkit")
+    
     run_command(f"httpx-toolkit -l {output_file} -ports 80,8080,8000,8888 -threads 200", "Httpx Toolkit", target,
                 output_file=f"{target_dir}/{target}-subdomains_alive.txt",
                 report_message=f"Subdomain alive check for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
-    # Running httpronbe 
-    logging,info(f"{random_color()}[*] Running httprobe")
-    run_command(f"cat {output_file} | httprobe -t 20000 ","Httprobe", target,
+    # Running httprobe 
+    run_command(f"cat {output_file} | httprobe -t 20000", "Httprobe", target,
                 output_file=f"{target_dir}/{target}-httprobe.txt",
                 report_message=f"Httprobe for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
-
-
-
     
 
 def port_scanning(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Port Scanning")
-    logging.info(f"{random_color()}[*] Running Naabu Scan")
-    run_command(f"naabu -host {target} -tp -silent", "Naabu", target,
+    
+    run_command(f"naabu -l {target_dir}/{target}-sorted-subdomains.txt -tp -silent", "Naabu", target,
                 output_file=f"{target_dir}/{target}-naabu.txt",
                 report_message=f"Naabu scan for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
     
 # Hidden Link Extractor using Waybackurls
 def link_extractor(target, target_dir, notify_telegram):
-    logging.info(f"{random_color()}[*] Link Extraction Using  Waybackurls")
+    logging.info(f"{random_color()}[*] Link Extraction Using Waybackurls")
 
     run_command(f"cat {target_dir}/{target}-subdomains_alive.txt | waybackurls > {target_dir}/{target}-waybackurls.txt", "Waybackurls", target,
                 output_file=f"{target_dir}/{target}-waybackurls.txt",
                 report_message=f"Waybackurls for {target} completed." if notify_telegram else None,
-                notify_telegram=notify_telegram)
-
-
-    logging.info(f"{random_color()}[*] Running gau")
-    
-    run_command(f" cat {target_dir}/{target}-subdomains_alive.txt | gau -u -o {target_dir}/{target}-gau.txt", "Gau",target,
-    output_file=f"{target_dir}/{target}-gau.txt",
-    report_message=f"Gau for {target} completed." if notify_telegram else None,
-    notify_telegram=notify_telegram
-    timeout= 300 ) 
+                notify_telegram=notify_telegram,
+                 timeout=3000 )
 
 
 # Directory Brute-Froce using Dirsearch 
@@ -247,10 +230,12 @@ def directory(target, target_dir, notify_telegram):
     target_folder = os.path.join(target_dir, target)
     os.makedirs(target_folder, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = os.path.join(target_folder, f"{timestamp}.txt")
+    # Define the output file with a fixed name based on the target and tool
+    output_file = os.path.join(target_folder, f"{target}-dirsearch.txt")
 
-    command = f"dirsearch -u {target} -e conf,config,bak,backup,swp,old,db,sql,asp,aspx,aspx~,asp~,py,py~,rb,rb~,php,php~,bak,bkp,cache,cgi,conf,csv,html,inc,jar,js,json,jsp,jsp~,lock,log,rar,old,sql,sql.gz,http://sql.zip,sql.tar.gz,sql~,swp,swp~,tar,tar.bz2,tar.gz,txt,wadl,zip,.log,.xml,.js,.json -o {output_file}"
+    command = (f"dirsearch -u {target} -e conf,config,bak,backup,swp,old,db,sql,asp,aspx,aspx~,asp~,py,py~,rb,rb~,php,php~,bak,bkp,"
+               f"cache,cgi,conf,csv,html,inc,jar,js,json,jsp,jsp~,lock,log,rar,old,sql,sql.gz,http://sql.zip,sql.tar.gz,sql~,"
+               f"swp,swp~,tar,tar.bz2,tar.gz,txt,wadl,zip,.log,.xml,.js,.json -o {output_file}")
 
     run_command(command, "Dirsearch", target,
                 report_message=f"Dirsearch for {target} completed." if notify_telegram else None,
@@ -259,7 +244,16 @@ def directory(target, target_dir, notify_telegram):
     logging.info(f"Output file saved to {output_file}")
 
 
-def exploits(target_dir,target,notify_telegram):
+
+def Fuzzing(target_dir,target,notify_telegram):
+    logging.info(f"{random_color()}[*] Fuzzing ...")
+    run_command(f"ffuf -u {target} -w payloads/fuzzing.txt -o {target_dir}/{target}-ffuf.txt -o {target_dir}/{target}-ffuf.txt" ,"Ffuf",target,
+                output_file=f"{target_dir}/{target}-ffuf.txt",
+                 report_message=f"ffuf for {target} completed "if notify_telegram else None ,
+                  notify_telegram=notify_telegram )
+
+
+"""def exploits(target_dir,target,notify_telegram):
     logging.info(f"{random_color()}[*] Exploits")
     run_command(f"sqlmap -u {target_dir}/{target}-pasql.txt --dbs --tamper=space2comment,between --level=3 --risk=3 --threads=5 --random-agent ", "Sqlmap", target,
                 output_file=f"{target_dir}/{target}-sqlmap.txt",
@@ -267,7 +261,7 @@ def exploits(target_dir,target,notify_telegram):
                 notify_telegram=notify_telegram)
 
     run_command(f"")
-
+"""
 
 
 def print_banner(target, ip_address, waf_info):
@@ -288,7 +282,7 @@ def main():
     args = parser.parse_args()
     target = args.target
 
-    notify_telegram = input(f"Do you want to send results to Telegram? (yes/no): ").strip().lower().strip().upper() == 'y'
+    notify_telegram = input(f"Do you want to send results to Telegram? (y/n): ").strip().lower().strip().upper() == 'y'
 
     target_dir = create_target_directory(target)
 
@@ -298,7 +292,7 @@ def main():
         print_banner(target, ip_address, waf_name)
     else:
         logging.warning(f"{random_color()}Unable to determine IP address for target '{target}'.")
-    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "gau", "waybackurls"]
+    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "waybackurls"]
     for tool in required_tools:
         if not check_tool(tool):
             logging.error(f"{random_color()}Tool '{tool}' not found. Please install it before running the script.")
@@ -314,7 +308,8 @@ def main():
     port_scanning(target, target_dir, notify_telegram)
     directory(target, target_dir, notify_telegram)
     link_extractor(target, target_dir, notify_telegram)
-    exploits(target,target_dir,notify_telegram)
+    Fuzzing(target_dir,target,notify_telegram)
+    #exploits(target,target_dir,notify_telegram)
 
 if __name__ == "__main__":
     if not os.path.exists(CONFIG_FILE):
