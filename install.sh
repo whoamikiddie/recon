@@ -44,6 +44,7 @@ sudo echo debconf apt-fast/maxdownloads string 16 | debconf-set-selections
 sudo echo debconf apt-fast/dlflag boolean true | debconf-set-selections
 sudo echo debconf apt-fast/aptmanager string apt-get | debconf-set-selections
 sudo apt install -y apt-fast
+sudo apt install wafw00f
 
 sudo apt-fast install -y apt-transport-https
 sudo apt-fast install -y libcurl4-openssl-dev

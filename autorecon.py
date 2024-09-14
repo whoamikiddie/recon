@@ -14,12 +14,14 @@ import time
 
 
 init(autoreset=True)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+logging.basicConfig(
+    level=logging.INFO,
+    format=f'{Fore.LIGHTGREEN_EX}%(asctime)s - %(levelname)s - %(message)s'
+)
 CONFIG_FILE = 'config.json'
 
 def random_color():
-    colors = [Fore.RED, Fore.GREEN, Fore.YELLOW, Fore.BLUE, Fore.MAGENTA, Fore.CYAN]
+    colors = [ Fore.GREEN]
     return random.choice(colors)
 
 def create_target_directory(target):
@@ -197,13 +199,8 @@ def merge_and_sort_subdomains(target, target_dir, notify_telegram):
                 report_message=f"Subdomain alive check for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram)
 
-    # Running httprobe 
-    run_command(f"cat {output_file} | httprobe -t 20000", "Httprobe", target,
-                output_file=f"{target_dir}/{target}-httprobe.txt",
-                report_message=f"Httprobe for {target} completed." if notify_telegram else None,
-                notify_telegram=notify_telegram)
+  
     
-
 def port_scanning(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Port Scanning")
     
@@ -221,6 +218,20 @@ def link_extractor(target, target_dir, notify_telegram):
                 report_message=f"Waybackurls for {target} completed." if notify_telegram else None,
                 notify_telegram=notify_telegram,
                  timeout=3000 )
+    
+
+# pattern matching 
+def pattern_matching(target, target_dir, notify_telegram):
+    logging.info(f"{random_color()}[*] Pattern matching")
+    
+    patterns = ["rce", "xss", "ssrf", "xxe", "takeover", "ssti", "redirect", "lfi", "domxxs"]
+    
+    for pattern in patterns:
+        command = f"cat {target_dir}/{target}-waybackurls.txt | gf {pattern} > {target_dir}/{target}-{pattern}.txt"
+        run_command(command, "Gf", target,
+                    output_file=f"{target_dir}/{target}-{pattern}.txt",
+                    report_message=f"Pattern matching for {target} completed." if notify_telegram else None,
+                    notify_telegram=notify_telegram)
 
 
 # Directory Brute-Froce using Dirsearch 
@@ -264,25 +275,38 @@ def Fuzzing(target_dir,target,notify_telegram):
 """
 
 
+
 def print_banner(target, ip_address, waf_info):
     banner = f"""
 {Fore.GREEN}-------------------------------------------------
-{Fore.YELLOW}          WELCOME TO RECON TOOL
+{Fore.GREEN}         
+{Fore.GREEN}███████╗ █████╗ ███╗   ██╗██████╗ ██████╗  ██████╗ ██████╗ ███╗   ██╗
+{Fore.GREEN}██╔════╝██╔══██╗████╗  ██║██╔══██╗╚════██╗██╔════╝██╔═████╗████╗  ██║
+{Fore.GREEN}███████╗███████║██╔██╗ ██║██████╔╝ █████╔╝██║     ██║██╔██║██╔██╗ ██║
+{Fore.GREEN}╚════██║██╔══██║██║╚██╗██║██╔══██╗ ╚═══██╗██║     ████╔╝██║██║╚██╗██║
+{Fore.GREEN}███████║██║  ██║██║ ╚████║██║  ██║██████╔╝╚██████╗╚██████╔╝██║ ╚████║
+{Fore.GREEN}╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
 {Fore.GREEN}-------------------------------------------------
-{Fore.CYAN}Target: {Fore.WHITE}{target}
-{Fore.CYAN}IP Address: {Fore.WHITE}{ip_address}
-{Fore.CYAN}WAF Information: {Fore.WHITE}{waf_info}
+{Fore.LIGHTRED_EX}Target: {Fore.RED}{target}
+{Fore.RED}IP Address: {Fore.RED}{ip_address}
+{Fore.RED}WAF Information: {Fore.RED}{waf_info}
 {Fore.GREEN}-------------------------------------------------
     """
-    logging.info(banner)
+    banner_lines = banner.splitlines()
+    for line in banner_lines:
+        sys.stdout.write(line + "\n")
+        sys.stdout.flush()
+        time.sleep(0.1) 
 
+
+                                                                     
 def main():
     parser = argparse.ArgumentParser(description="Reconnaissance and vulnerability scanning tool")
     parser.add_argument('target', help="The target domain or IP address to scan")
     args = parser.parse_args()
     target = args.target
 
-    notify_telegram = input(f"Do you want to send results to Telegram? (y/n): ").strip().lower().strip().upper() == 'y'
+    notify_telegram = input(f"{Fore.LIGHTGREEN_EX}Do you want to send results to Telegram? (y/n): ").strip().lower().strip().upper() == 'y'
 
     target_dir = create_target_directory(target)
 
@@ -307,6 +331,7 @@ def main():
     merge_and_sort_subdomains(target, target_dir, notify_telegram)
     port_scanning(target, target_dir, notify_telegram)
     directory(target, target_dir, notify_telegram)
+    pattern_matching(target,target_dir,notify_telegram)
     link_extractor(target, target_dir, notify_telegram)
     Fuzzing(target_dir,target,notify_telegram)
     #exploits(target,target_dir,notify_telegram)
