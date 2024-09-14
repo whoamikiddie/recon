@@ -316,7 +316,7 @@ def main():
         print_banner(target, ip_address, waf_name)
     else:
         logging.warning(f"{random_color()}Unable to determine IP address for target '{target}'.")
-    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "waybackurls"]
+    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "waybackurls","gf"]
     for tool in required_tools:
         if not check_tool(tool):
             logging.error(f"{random_color()}Tool '{tool}' not found. Please install it before running the script.")
