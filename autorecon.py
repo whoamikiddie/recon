@@ -248,61 +248,110 @@ def link_extractor(target, target_dir, notify_telegram, timeout=300):
 # Pattern Matching 
 
 
+def check_file_exists(file_path):
+    """ Check if the file exists. """
+    exists = os.path.isfile(file_path)
+    if exists:
+        logging.info(f"Output file exists: {file_path}")
+    else:
+        logging.error(f"Output file does not exist: {file_path}")
+    return exists
+
+def check_file_contains_values(file_path):
+    """ Check if the file contains any non-empty lines. """
+    if not check_file_exists(file_path):
+        return False
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            if line.strip():
+                return True
+    logging.info(f"File is empty or contains only whitespace: {file_path}")
+    return False
+
 def pattern_matching(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Pattern matching")
 
     waybackurls_file = f"{target_dir}/{target}-waybackurls.txt"
+
+    # Define file paths for outputs
     sqli_file = f"{target_dir}/{target}-sqli.txt"
     xss_file = f"{target_dir}/{target}-xss.txt"
     rce_file = f"{target_dir}/{target}-rce.txt"
     ssrf_file = f"{target_dir}/{target}-ssrf.txt"
     redirect_file = f"{target_dir}/{target}-redirect.txt"
     lfi_file = f"{target_dir}/{target}-lfi.txt"
-     
-    # Create a temporary file for pattern matching
+
+    # Create a single temporary file to be used for all pattern matching functions
     with tempfile.NamedTemporaryFile(delete=False, mode='w+', newline='\n') as temp_file:
         temp_file_name = temp_file.name
-        
-        # Copy content from waybackurls_file to the temporary file
-        with open(waybackurls_file, 'r') as original_file:
-            temp_file.write(original_file.read())
-        
-        temp_file.flush()  # Ensure all data is written to the temp file
-        
-        # Perform pattern matching on the temporary file
-        run_command(f"cat {temp_file_name} | gf sqli > {sqli_file}", "Gf", target,
-                    output_file=sqli_file,
-                    report_message=f"Pattern matching for {target}  SQLi completed.",
-                    notify_telegram=notify_telegram)
-        
-        run_command(f"cat {temp_file} | gf xss > {xss_file}", "Gf",target,
-                    output_file=xss_file,
-                    report_message=f"Pattern matching for {target} XSS completed.",
-                    notify_telegram=notify_telegram)
-        
-        run_command(f"cat {temp_file} | gf rce > {rce_file}", "Gf",target,
-                    output_file=rce_file,
-                    report_message=f"Pattern matching for {target} RCE completed.",
-                    notify_telegram=notify_telegram)
-        
-        run_command(f"cat {temp_file} | gf ssrf > {ssrf_file}", "Gf",target,
-                    output_file=ssrf_file,
-                    report_message=f"Pattern matching for {target} SSRF completed.",
-                    notify_telegram=notify_telegram)
-        
-        run_command(f"cat {temp_file} | gf redirect > {redirect_file}", "Gf",target,
-                    output_file=redirect_file,
-                    report_message=f"Pattern matching for {target} Redirect completed.",
-                    notify_telegram=notify_telegram)
-        
-        run_command(f"cat {temp_file} | gf lfi > {lfi_file}", "Gf",target,
-                    output_file=lfi_file,
-                    report_message=f"Pattern matching for {target} lfi completed.",
-                    notify_telegram=notify_telegram)
-        
-        # Clean up temporary file
-        os.remove(temp_file_name)
-        
+        try:
+            # Copy content from waybackurls file to temporary file
+            with open(waybackurls_file, 'r') as original_file:
+                temp_file.write(original_file.read())
+            temp_file.flush()
+
+            # Perform pattern matching using the same temporary file
+            if (pattern_match_sqli(temp_file_name, sqli_file, target, notify_telegram) and
+                check_file_contains_values(sqli_file) and
+                pattern_match_xss(temp_file_name, xss_file, target, notify_telegram) and
+                check_file_contains_values(xss_file) and
+                pattern_match_rce(temp_file_name, rce_file, target, notify_telegram) and
+                check_file_contains_values(rce_file) and
+                pattern_match_ssrf(temp_file_name, ssrf_file, target, notify_telegram) and
+                check_file_contains_values(ssrf_file) and
+                pattern_match_redirect(temp_file_name, redirect_file, target, notify_telegram) and
+                check_file_contains_values(redirect_file) and
+                pattern_match_lfi(temp_file_name, lfi_file, target, notify_telegram) and
+                check_file_contains_values(lfi_file)):
+                logging.info(f"{random_color()}[*] All pattern matching completed successfully.")
+            else:
+                logging.error(f"Pattern matching failed at some step. Check logs for details.")
+        finally:
+            os.remove(temp_file_name)
+
+def pattern_match_sqli(temp_file_name, sqli_file, target, notify_telegram):
+    """ Perform SQL injection pattern matching. """
+    command = f"gf sqli {temp_file_name}"
+    return run_command(command, "Gf", target, sqli_file,
+                       report_message=f"Pattern matching for {target} SQLi completed.",
+                       notify_telegram=notify_telegram)
+
+def pattern_match_xss(temp_file_name, xss_file, target, notify_telegram):
+    """ Perform XSS pattern matching. """
+    command = f"gf xss {temp_file_name}"
+    return run_command(command, "Gf", target, xss_file,
+                       report_message=f"Pattern matching for {target} XSS completed.",
+                       notify_telegram=notify_telegram)
+
+def pattern_match_rce(temp_file_name, rce_file, target, notify_telegram):
+    """ Perform RCE pattern matching. """
+    command = f"gf rce {temp_file_name}"
+    return run_command(command, "Gf", target, rce_file,
+                       report_message=f"Pattern matching for {target} RCE completed.",
+                       notify_telegram=notify_telegram)
+
+def pattern_match_ssrf(temp_file_name, ssrf_file, target, notify_telegram):
+    """ Perform SSRF pattern matching. """
+    command = f"gf ssrf {temp_file_name}"
+    return run_command(command, "Gf", target, ssrf_file,
+                       report_message=f"Pattern matching for {target} SSRF completed.",
+                       notify_telegram=notify_telegram)
+
+def pattern_match_redirect(temp_file_name, redirect_file, target, notify_telegram):
+    """ Perform Redirect pattern matching. """
+    command = f"gf redirect {temp_file_name}"
+    return run_command(command, "Gf", target, redirect_file,
+                       report_message=f"Pattern matching for {target} Redirect completed.",
+                       notify_telegram=notify_telegram)
+
+def pattern_match_lfi(temp_file_name, lfi_file, target, notify_telegram):
+    """ Perform LFI pattern matching. """
+    command = f"gf lfi {temp_file_name}"
+    return run_command(command, "Gf", target, lfi_file,
+                       report_message=f"Pattern matching for {target} LFI completed.",
+                       notify_telegram=notify_telegram)
+
 
 # Directory Brute-Froce using Dirsearch 
 def directory(target, target_dir, notify_telegram):
@@ -335,9 +384,6 @@ def Fuzzing(target_dir,target,notify_telegram):
 
 
 
-
-
-
 def print_banner(target, ip_address, waf_info):
     banner = f"""
 {Fore.GREEN}-------------------------------------------------
@@ -359,9 +405,7 @@ def print_banner(target, ip_address, waf_info):
         sys.stdout.write(line + "\n")
         sys.stdout.flush()
         time.sleep(0.1) 
-
-
-                                                                     
+                                                                
 def main():
     parser = argparse.ArgumentParser(description="Reconnaissance and vulnerability scanning tool")
     parser.add_argument('target', help="The target domain or IP address to scan")
@@ -392,9 +436,9 @@ def main():
     enum_subdomains(target, target_dir, notify_telegram)
     merge_and_sort_subdomains(target, target_dir, notify_telegram)
     port_scanning(target, target_dir, notify_telegram)
-    #directory(target, target_dir, notify_telegram)
     link_extractor(target, target_dir, notify_telegram)
     pattern_matching(target, target_dir, notify_telegram)
+    #directory(target, target_dir, notify_telegram)
     #Fuzzing(target_dir, target, notify_telegram)
     #exploits(target, target_dir, notify_telegram)
 
