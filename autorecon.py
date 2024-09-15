@@ -10,7 +10,7 @@ from datetime import datetime
 import json
 from colorama import Fore, init
 import time 
-
+import tempfile
 
 
 init(autoreset=True)
@@ -140,11 +140,14 @@ def run_command(command, tool_name, target, output_file=None, report_message=Non
                 logging.info(f"{random_color()}Output file '{output_file}' does not exist or notifications are disabled.")
         else:
             logging.info(f"{random_color()}[*] {tool_name} completed successfully without output file.")
+            if report_message and notify_telegram:
+                send_telegram_message(report_message)
     except subprocess.CalledProcessError as e:
         logging.error(f"{random_color()}[!] {tool_name} failed with error: {e.stderr.decode()}")
     except KeyboardInterrupt:
         logging.info("Process was interrupted by the user.")
         sys.exit(1)
+
 
 def enum_subdomains(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Enumerating subdomains")
@@ -210,29 +213,96 @@ def port_scanning(target, target_dir, notify_telegram):
                 notify_telegram=notify_telegram)
     
 # Hidden Link Extractor using Waybackurls
-def link_extractor(target, target_dir, notify_telegram):
+
+def link_extractor(target, target_dir, notify_telegram, timeout=300):
     logging.info(f"{random_color()}[*] Link Extraction Using Waybackurls")
 
-    run_command(f"cat {target_dir}/{target}-subdomains_alive.txt | waybackurls > {target_dir}/{target}-waybackurls.txt", "Waybackurls", target,
-                output_file=f"{target_dir}/{target}-waybackurls.txt",
-                report_message=f"Waybackurls for {target} completed." if notify_telegram else None,
-                notify_telegram=notify_telegram,
-                 timeout=3000 )
-    
+    waybackurls_file = f"{target_dir}/{target}-waybackurls.txt"
+    command = f"cat {target_dir}/{target}-subdomains_alive.txt | waybackurls > {waybackurls_file}"
 
-# pattern matching 
+    try:
+        logging.info(f"Running command: {command}")
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+            if stdout:
+                logging.info(stdout)
+            if stderr:
+                logging.error(stderr)
+            if process.returncode != 0:
+                logging.error(f"Waybackurls failed with return code {process.returncode}")
+        except subprocess.TimeoutExpired:
+            process.kill()
+            logging.error(f"Waybackurls timed out after {timeout} seconds")
+            if notify_telegram:
+                # Implement your Telegram notification logic here
+                pass
+    except Exception as e:
+        logging.error(f"Error running command: {e}")
+
+    if notify_telegram:
+        logging.info(f"Waybackurls for {target} completed.")
+
+    logging.info(f"Output written to: {waybackurls_file}")
+# Pattern Matching 
+
+
 def pattern_matching(target, target_dir, notify_telegram):
     logging.info(f"{random_color()}[*] Pattern matching")
-    
-    patterns = ["rce", "xss", "ssrf", "xxe", "takeover", "ssti", "redirect", "lfi", "domxxs"]
-    
-    for pattern in patterns:
-        command = f"cat {target_dir}/{target}-waybackurls.txt | gf {pattern} > {target_dir}/{target}-{pattern}.txt"
-        run_command(command, "Gf", target,
-                    output_file=f"{target_dir}/{target}-{pattern}.txt",
-                    report_message=f"Pattern matching for {target} completed." if notify_telegram else None,
-                    notify_telegram=notify_telegram)
 
+    waybackurls_file = f"{target_dir}/{target}-waybackurls.txt"
+    sqli_file = f"{target_dir}/{target}-sqli.txt"
+    xss_file = f"{target_dir}/{target}-xss.txt"
+    rce_file = f"{target_dir}/{target}-rce.txt"
+    ssrf_file = f"{target_dir}/{target}-ssrf.txt"
+    redirect_file = f"{target_dir}/{target}-redirect.txt"
+    lfi_file = f"{target_dir}/{target}-lfi.txt"
+     
+    # Create a temporary file for pattern matching
+    with tempfile.NamedTemporaryFile(delete=False, mode='w+', newline='\n') as temp_file:
+        temp_file_name = temp_file.name
+        
+        # Copy content from waybackurls_file to the temporary file
+        with open(waybackurls_file, 'r') as original_file:
+            temp_file.write(original_file.read())
+        
+        temp_file.flush()  # Ensure all data is written to the temp file
+        
+        # Perform pattern matching on the temporary file
+        run_command(f"cat {temp_file_name} | gf sqli > {sqli_file}", "Gf", target,
+                    output_file=sqli_file,
+                    report_message=f"Pattern matching for {target}  SQLi completed.",
+                    notify_telegram=notify_telegram)
+        
+        run_command(f"cat {temp_file} | gf xss > {xss_file}", "Gf",target,
+                    output_file=xss_file,
+                    report_message=f"Pattern matching for {target} XSS completed.",
+                    notify_telegram=notify_telegram)
+        
+        run_command(f"cat {temp_file} | gf rce > {rce_file}", "Gf",target,
+                    output_file=rce_file,
+                    report_message=f"Pattern matching for {target} RCE completed.",
+                    notify_telegram=notify_telegram)
+        
+        run_command(f"cat {temp_file} | gf ssrf > {ssrf_file}", "Gf",target,
+                    output_file=ssrf_file,
+                    report_message=f"Pattern matching for {target} SSRF completed.",
+                    notify_telegram=notify_telegram)
+        
+        run_command(f"cat {temp_file} | gf redirect > {redirect_file}", "Gf",target,
+                    output_file=redirect_file,
+                    report_message=f"Pattern matching for {target} Redirect completed.",
+                    notify_telegram=notify_telegram)
+        
+        run_command(f"cat {temp_file} | gf lfi > {lfi_file}", "Gf",target,
+                    output_file=lfi_file,
+                    report_message=f"Pattern matching for {target} lfi completed.",
+                    notify_telegram=notify_telegram)
+        
+        # Clean up temporary file
+        os.remove(temp_file_name)
+        
 
 # Directory Brute-Froce using Dirsearch 
 def directory(target, target_dir, notify_telegram):
@@ -264,15 +334,7 @@ def Fuzzing(target_dir,target,notify_telegram):
                   notify_telegram=notify_telegram )
 
 
-"""def exploits(target_dir,target,notify_telegram):
-    logging.info(f"{random_color()}[*] Exploits")
-    run_command(f"sqlmap -u {target_dir}/{target}-pasql.txt --dbs --tamper=space2comment,between --level=3 --risk=3 --threads=5 --random-agent ", "Sqlmap", target,
-                output_file=f"{target_dir}/{target}-sqlmap.txt",
-                report_message=f"Sqlmap for {target} completed." if notify_telegram else None,
-                notify_telegram=notify_telegram)
 
-    run_command(f"")
-"""
 
 
 
@@ -306,7 +368,7 @@ def main():
     args = parser.parse_args()
     target = args.target
 
-    notify_telegram = input(f"{Fore.LIGHTGREEN_EX}Do you want to send results to Telegram? (y/n): ").strip().lower().strip().upper() == 'y'
+    notify_telegram = input(f"{Fore.LIGHTGREEN_EX}Do you want to send results to Telegram? (y/n): ").strip().lower() == 'y'
 
     target_dir = create_target_directory(target)
 
@@ -316,25 +378,26 @@ def main():
         print_banner(target, ip_address, waf_name)
     else:
         logging.warning(f"{random_color()}Unable to determine IP address for target '{target}'.")
-    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "waybackurls","gf"]
+
+    required_tools = ["subfinder", "httpx-toolkit", "katana", "assetfinder", "ffuf", "dirsearch", "waybackurls", "gf"]
     for tool in required_tools:
         if not check_tool(tool):
             logging.error(f"{random_color()}Tool '{tool}' not found. Please install it before running the script.")
             sys.exit(1)
 
     bot_token, chat_id = read_config()
-
     if not bot_token or not chat_id:
         prompt_for_config()
 
     enum_subdomains(target, target_dir, notify_telegram)
     merge_and_sort_subdomains(target, target_dir, notify_telegram)
     port_scanning(target, target_dir, notify_telegram)
-    directory(target, target_dir, notify_telegram)
-    pattern_matching(target,target_dir,notify_telegram)
+    #directory(target, target_dir, notify_telegram)
     link_extractor(target, target_dir, notify_telegram)
-    Fuzzing(target_dir,target,notify_telegram)
-    #exploits(target,target_dir,notify_telegram)
+    pattern_matching(target, target_dir, notify_telegram)
+    #Fuzzing(target_dir, target, notify_telegram)
+    #exploits(target, target_dir, notify_telegram)
+
 
 if __name__ == "__main__":
     if not os.path.exists(CONFIG_FILE):
