@@ -15,15 +15,9 @@ Ensure the following tools are installed and accessible in your system's PATH:
 - `httpx-toolkit`
 - `katana`
 - `dirsearch`
-- `ffuf`
 - `gf`
 - `nuclei`
 
-Additionally, install the required Python packages:
-
-```sh
-pip install requests colorama
-```
 
 ## Configuration
 
@@ -41,17 +35,16 @@ Create a `config.json` file in the same directory as the script with your Telegr
 To run the script, execute it with Python:
 
 ```sh
-python script_name.py
+python autorecon.py
 ```
 
-Replace `script_name.py` with the name of your script file.
 
 ## Features
 
 - **Subdomain Enumeration**: Uses `subfinder` for subdomain discovery and `httpx-toolkit` to verify their availability.
 - **URL Extraction**: Extracts URLs from active subdomains with `katana`.
 - **Sensitive File Extraction**: Identifies potentially sensitive files from URLs using `grep`.
-- **Fuzzing**: Performs directory and file fuzzing with `dirsearch` and `ffuf`.
+- **Fuzzing**: Performs directory and file fuzzing with `dirsearch` 
 - **XSS Finding**: Detects potential XSS vulnerabilities using `gf`.
 - **LFI Finding**: Searches for Local File Inclusion (LFI) vulnerabilities using `gf` and `nuclei`.
 
