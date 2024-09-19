@@ -1,8 +1,0 @@
-http://testphp.vulnweb.com
-http://rest.vulnweb.com
-http://rest.vulnweb.com:8080
-http://testasp.vulnweb.com
-http://vulnweb.com
-http://testaspnet.vulnweb.com
-http://testhtml5.vulnweb.com
-http://www.vulnweb.com
