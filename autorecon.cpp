@@ -135,16 +135,40 @@ void send_telegram_message(const std::string& bot_token, const std::string& chat
     CURL* curl = curl_easy_init();
     if (curl) {
         std::string url = "https://api.telegram.org/bot" + bot_token + "/sendMessage";
-        std::string data = "chat_id=" + chat_id + "&text=" + curl_easy_escape(curl, message.c_str(), message.length()) + "&parse_mode=Markdown";
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-        CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            log_message("Error sending Telegram message: " + std::string(curl_easy_strerror(res)));
+        std::string escaped_message = curl_easy_escape(curl, message.c_str(), message.length());
+        
+        if (escaped_message.length() > 4096) {
+            size_t start = 0;
+            while (start < escaped_message.length()) {
+                size_t length = std::min(escaped_message.length() - start, static_cast<size_t>(4096));
+                std::string part = escaped_message.substr(start, length);
+                
+                std::string data = "chat_id=" + chat_id + "&text=" + part + "&parse_mode=Markdown";
+                curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+                
+                CURLcode res = curl_easy_perform(curl);
+                if (res != CURLE_OK) {
+                    log_message("Error sending Telegram message: " + std::string(curl_easy_strerror(res)));
+                }
+
+                start += length; 
+            }
+        } else {
+            std::string data = "chat_id=" + chat_id + "&text=" + escaped_message + "&parse_mode=Markdown";
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+            
+            CURLcode res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                log_message("Error sending Telegram message: " + std::string(curl_easy_strerror(res)));
+            }
         }
+
         curl_easy_cleanup(curl);
     }
 }
+
 void run_command(const std::string& command, const std::string& tool_name, const std::string& output_file) {
     log_message("Running " + tool_name);
     std::string cmd = command + " > " + output_file + " 2>/dev/null";
@@ -193,16 +217,19 @@ void print_banner(const std::string& target, const std::string& ip_address, cons
         "╚════██║██╔══██║██║╚██╗██║██╔═══╝  ╚═══██╗██║     ████╔╝██║██║╚██╗██║",
         "███████║██║  ██║██║ ╚████║██║     ██████╔╝╚██████╗╚██████╔╝██║ ╚████║",
         "╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝     ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝",
-        "---------------------------------------------------------------------"
+        
+                                                          
     };
 
     for (const auto& line : banner) {
-        std::cout << line << std::endl;
+        std::cout << GREEN << line << std::endl;
     }
-
+    
+    std::cout << GREEN << "-------------------------------------------------" << std::endl ;
     std::cout << GREEN << "Target: " << RESET << target << std::endl;
     std::cout << GREEN << "IP Address: " << RESET << ip_address << std::endl;
     std::cout << GREEN << "WAF Info: " << RESET << waf_info << std::endl;
+    std::cout << GREEN << "--------------------------------------------------" << std::endl ;
 }
 
 std::string format_result(const std::string& tool_name, const std::string& result) {
@@ -236,20 +263,25 @@ int main(int argc, char* argv[]) {
     std::string waf_info;
 
     //  send ip and waf...
-    if (!ip_address.empty()) {
-        sendRequest("http://" + target, headers);
-        waf_info = detect_waf(target);
+  if (!ip_address.empty()) {
+    sendRequest("http://" + target, headers);
+    waf_info = detect_waf(target);
 
-        std::string initial_message = "*📊 Target Information*\n\n";
-        initial_message += "*🔍 Target:* `" + target + "`\n";
-        initial_message += "*🌐 IP Address:* `" + ip_address + "`\n";
-        initial_message += "*🛡️ WAF Info:* `" + waf_info + "`\n";
+    std::string initial_message = "*📊 Target Information*\n\n";
+    initial_message += "*🔍 Target:* `" + target + "`\n";
+    initial_message += "*🌐 IP Address:* `" + ip_address + "`\n";
+    initial_message += "*🛡️ WAF Info:* `" + waf_info + "`\n";
 
-        send_telegram_message(bot_token, chat_id, initial_message);
-        log_message("Initial information sent to Telegram.");
-    }
+    send_telegram_message(bot_token, chat_id, initial_message);
+    log_message("Initial information sent to Telegram.");
+
+    print_banner(target, ip_address, waf_info);
+}
 
     std::string tool_message;
+
+// passive scanning..
+
 
     // Whois...
     log_message("Running Whois Lookup... 🔧 ");
@@ -262,51 +294,60 @@ int main(int argc, char* argv[]) {
     run_command("nslookup " + target, "NSLookup", target_dir + "/nslookup.txt");
     tool_message = format_result("🔍NSLookup", exec_command(("cat " + target_dir + "/nslookup.txt").c_str()));
     send_telegram_message(bot_token, chat_id, tool_message);
+
+    // asnlookup... 
+    log_message("Running Asnlookup...");
+    run_command("python3 tools/asnlookup/asnlookup.py -d " + target + "-a","Asnlookup" + target_dir + "/asnlookup.txt" );
+    tool_message = "Asnlookup is Completed...";
+    send_telegram_message(bot_token, chat_id, tool_message);
+
+    // ssl--checker...
+    log_message("Running ssl-checking..");
+    run_command("python3 tools/ssl--checker/ssl_checker.py -H " + target + target_dir + "/ssl.txt" , "Ssl-checker" );
+    tool_message = "==> ssl-checker is completed...";
+    send_telegram_message(bot_token, chat_id, tool_message);
+    
+
     
     // cloud-enumeration...
-    log_message("Running Cloud-Enum...☁️");
-    run_command(("python3 tools/cloud-enum/cloud_enum.py -k " + target + " --quickscan | tee cloud.txt").c_str(), "cloud-enum", target_dir + "/cloud.txt");
-    std::string new_tool_message = format_result(" cloud-enum ", exec_command(("cat " + target_dir + "/cloud.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, new_tool_message);
+   log_message("Running Cloud-Enum...☁️");
+    run_command(("python3 tools/cloud-enum/cloud_enum.py -k " + target + " --quickscan > " + target_dir + "/cloud_enum.txt").c_str(), "Cloud Enum", target_dir + "/cloud_enum.txt");
+    std::string cloud_enum_message = format_result("Cloud Enum", exec_command(("cat " + target_dir + "/cloud_enum.txt").c_str()));
+    send_telegram_message(bot_token, chat_id, cloud_enum_message);
 
-    // TheHarvester...
-    log_message("Running TheHarvester... 🕵️‍♂️");
-    run_command(("python3 ~/tools/theHarvester/theHarvester.py -d " + target + " -b all -l 500 -f theharvester.html > theharvester.txt").c_str(), "TheHarvester", target_dir + "/theharvester.txt");
+// active scanning...
 
-    log_message("Extracting Users...");
-    run_command("awk '/Users/,/IPs/' theharvester.txt | sed -e '1,2d' | head -n -2 | anew -q users.txt", "Extracting Users", target_dir + "/users.txt");
-    std::string users_message = format_result("Users found", exec_command(("cat " + target_dir + "/users.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, users_message);
-
-    log_message("Extracting IPs...");
-    run_command("awk '/IPs/,/Emails/' theharvester.txt | sed -e '1,2d' | head -n -2 | anew -q ips.txt", "Extracting IPs", target_dir + "/ips.txt");
-    std::string ips_message = format_result("IP's found", exec_command(("cat " + target_dir + "/ips.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, ips_message);
-
-    log_message("Extracting Emails...");
-    run_command("awk '/Emails/,/Hosts/' theharvester.txt | sed -e '1,2d' | head -n -2 | anew -q emails.txt", "Extracting Emails", target_dir + "/emails.txt");
-    std::string emails_message = format_result("Emails found", exec_command(("cat " + target_dir + "/emails.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, emails_message);
-
-    log_message("Extracting Hosts...");
-    run_command("awk '/Hosts/,/Trello/' theharvester.txt | sed -e '1,2d' | head -n -2 | anew -q hosts.txt", "Extracting Hosts", target_dir + "/hosts.txt");
-    std::string hosts_message = format_result("Hosts found", exec_command(("cat " + target_dir + "/hosts.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, hosts_message);
-
-
-
+    // Robot Scraper..
+    log_message("Run    ning Robot-Scraper...");
+    run_command(("python3 tools/robot-scraper/robotScraper.py -d " + target + " -s " + target_dir + "/robotscraper.txt").c_str(), "Robot Scraper", target_dir + "/robotscraper.txt");
+    std::string robot_scraper_message = "Robot is Completed...☁️☁️ ";
+    send_telegram_message(bot_token, chat_id, robot_scraper_message);
 
     // subfinder...
     log_message("Running Subfinder...");
     run_command("subfinder -d " + target, "Subfinder", target_dir + "/subfinder.txt");
-    tool_message = format_result("🔑 Subfinder", exec_command(("cat " + target_dir + "/subfinder.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, tool_message);
+    tool_message = "🔑 Subfinder is Completed " ;
+    send_telegram_message(bot_token, chat_id, robot_scraper_message);
 
     // assetfinder..
     log_message("Running Assetfinder...");
     run_command("assetfinder -subs-only " + target, "Assetfinder", target_dir + "/assetfinder.txt");
-    tool_message = format_result("📦  Assetfinder", exec_command(("cat " + target_dir + "/assetfinder.txt").c_str()));
+    tool_message = "📦  Assetfinder is Completed ";
     send_telegram_message(bot_token, chat_id, tool_message);
+
+    // sublist3r..
+    log_message("Running Sublist3r...");
+    run_command("sublist3r -d " + target + "-t 5 -o ", "Sublist3r", target_dir + "/sublist3r.txt");
+    tool_message = " Sublist3r is Completed.. ";
+    send_telegram_message(bot_token, chat_id, tool_message);
+
+    // amass..
+    log_message("Running a Amass..");
+    run_command("amass enum -d " + target + "-o ", "Amass", target_dir+ "/amass.txt");
+    tool_message = "Amass is Completed.. ";
+    send_telegram_message(bot_token, chat_id, tool_message);
+
+
 
     // sorting a subdomains...
     log_message("Sorting Subdomains...");
@@ -314,6 +355,18 @@ int main(int argc, char* argv[]) {
     tool_message = format_result("📊 Sorted Subdomains", exec_command(("cat " + target_dir + "/sorted.txt").c_str()));
     send_telegram_message(bot_token, chat_id, tool_message);
 
-    log_message("All tool results sent to Telegram.");
+    // httpx-toolkit
+    log_message("httpx-toolkit...");
+    run_command("cat" + target_dir + "/sorted.txt | httpx-toolkit -ports 80,443,8080,8000,8888 -threads 200 > " +target_dir + "/subdomians_alive.txt", "Running the Httpx-toolkit", target_dir + "/subdomain_alive.txt");
+    tool_message = format_result("Httpx-toolkit Results...", exec_command(("cat " + target_dir + "/subdomains_alive.txt" ).c_str()));
+    send_telegram_message(bot_token, chat_id, tool_message);
+
+    // port scaning..
+    log_message("Port Scaning...");
+    run_command("naabu -l" + target_dir + "/subdomains_alive.txt"  )
+
+
+
+    log_message("Happy hacking 😇😎.");
     return 0;
 }
