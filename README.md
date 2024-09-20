@@ -17,7 +17,7 @@ Ensure the following tools are installed and accessible in your system's PATH:
 - `dirsearch`
 - `gf`
 - `nuclei`
-
+- html2text
 
 ## Configuration
 
