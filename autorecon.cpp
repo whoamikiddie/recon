@@ -20,6 +20,8 @@
 #include <vector>
 #include <algorithm>
 
+
+
 const std::string GREEN = "\033[32m";
 const std::string RESET = "\033[0m";
 
@@ -280,10 +282,10 @@ int main(int argc, char* argv[]) {
 
     std::string tool_message;
 
-// passive scanning..
 
+// passive recon...
 
-    // Whois...
+    // whois lookup...
     log_message("Running Whois Lookup... 🔧 ");
     run_command("whois " + target + " | grep -E 'Domain Name|Registry|Registrar|Updated|Creation|Registrant|Name Server|DNSSEC|Status'", "Whois Lookup", target_dir + "/whois.txt");
     tool_message = format_result("🔧 Whois Lookup", exec_command(("cat " + target_dir + "/whois.txt").c_str()));
@@ -292,80 +294,78 @@ int main(int argc, char* argv[]) {
     // nslookup...
     log_message("Running NSLookup...🔧");
     run_command("nslookup " + target, "NSLookup", target_dir + "/nslookup.txt");
-    tool_message = format_result("🔍NSLookup", exec_command(("cat " + target_dir + "/nslookup.txt").c_str()));
+    tool_message = format_result("🔍 NSLookup", exec_command(("cat " + target_dir + "/nslookup.txt").c_str()));
     send_telegram_message(bot_token, chat_id, tool_message);
 
-    // asnlookup... 
+    // asnlookup...
     log_message("Running Asnlookup...");
-    run_command("python3 tools/asnlookup/asnlookup.py -d " + target + "-a","Asnlookup" + target_dir + "/asnlookup.txt" );
+    run_command("python3 tools/asnlookup/asnlookup.py -d " + target + " -a", "Asnlookup", target_dir + "/asnlookup.txt");
     tool_message = "Asnlookup is Completed...";
     send_telegram_message(bot_token, chat_id, tool_message);
 
-    // ssl--checker...
-    log_message("Running ssl-checking..");
-    run_command("python3 tools/ssl--checker/ssl_checker.py -H " + target + target_dir + "/ssl.txt" , "Ssl-checker" );
-    tool_message = "==> ssl-checker is completed...";
+    // ssl-checker...
+    log_message("Running SSL Checking...");
+    run_command("python3 tools/ssl-checker/ssl_checker.py -H " + target + " > " + target_dir + "/ssl.txt", "Ssl-checker", target_dir + "/ssl.txt");
+    tool_message = "==> SSL Checker is completed...";
     send_telegram_message(bot_token, chat_id, tool_message);
-    
 
-    
     // cloud-enumeration...
-   log_message("Running Cloud-Enum...☁️");
-    run_command(("python3 tools/cloud-enum/cloud_enum.py -k " + target + " --quickscan > " + target_dir + "/cloud_enum.txt").c_str(), "Cloud Enum", target_dir + "/cloud_enum.txt");
-    std::string cloud_enum_message = format_result("Cloud Enum", exec_command(("cat " + target_dir + "/cloud_enum.txt").c_str()));
+    log_message("Running Cloud-Enum...☁️");
+    run_command("python3 tools/cloud-enum/cloud_enum.py -k " + target + " --quickscan > " + target_dir + "/cloud_enum.txt", "Cloud Enum", target_dir + "/cloud_enum.txt");
+    std::string cloud_enum_message = format_result("☁️ Cloud Enum", exec_command(("cat " + target_dir + "/cloud_enum.txt").c_str()));
     send_telegram_message(bot_token, chat_id, cloud_enum_message);
 
-// active scanning...
 
-    // Robot Scraper..
-    log_message("Run    ning Robot-Scraper...");
-    run_command(("python3 tools/robot-scraper/robotScraper.py -d " + target + " -s " + target_dir + "/robotscraper.txt").c_str(), "Robot Scraper", target_dir + "/robotscraper.txt");
-    std::string robot_scraper_message = "Robot is Completed...☁️☁️ ";
+
+
+// active recon...
+    // robot-scraper...
+    log_message("Running Robot-Scraper...");
+    run_command("python3 tools/robot-scraper/robotScraper.py -d " + target + " -s " + target_dir + "/robotscraper.txt", "Robot Scraper", target_dir + "/robotscraper.txt");
+    std::string robot_scraper_message = "Robot Scraper is Completed... ☁️☁️";
     send_telegram_message(bot_token, chat_id, robot_scraper_message);
+
+
+
+
+// subdomains finding....    
+
 
     // subfinder...
-    log_message("Running Subfinder...");
-    run_command("subfinder -d " + target, "Subfinder", target_dir + "/subfinder.txt");
-    tool_message = "🔑 Subfinder is Completed " ;
-    send_telegram_message(bot_token, chat_id, robot_scraper_message);
+    log_message("Finding Subdomains...");
+    run_command("subfinder -d " + target + " > " + target_dir + "/subfinder.txt", "Subfinder", target_dir + "/subfinder.txt");
 
-    // assetfinder..
-    log_message("Running Assetfinder...");
-    run_command("assetfinder -subs-only " + target, "Assetfinder", target_dir + "/assetfinder.txt");
-    tool_message = "📦  Assetfinder is Completed ";
+    // assetfinder...
+    run_command("assetfinder -subs-only " + target + " > " + target_dir + "/assetfinder.txt", "Assetfinder", target_dir + "/assetfinder.txt");
+
+    // sublist3r...
+    run_command("sublist3r -d " + target + " -t 5 -o " + target_dir + "/sublist3r.txt", "Sublist3r", target_dir + "/sublist3r.txt");
+
+    // amass...
+    run_command("amass enum -d " + target + " -o " + target_dir + "/amass.txt", "Amass", target_dir + "/amass.txt");
+
+    // sorting subdomains...
+    run_command("cat " + target_dir + "/subfinder.txt " + target_dir + "/assetfinder.txt " + target_dir + "/sublist3r.txt | sort | uniq > " + target_dir + "/subdomains.txt", "Sorting Subdomains", target_dir + "/subdomains.txt");
+    tool_message = format_result("🔑 Subdomains Completed ", exec_command(("cat " + target_dir + "/subdomains.txt").c_str()));
     send_telegram_message(bot_token, chat_id, tool_message);
 
-    // sublist3r..
-    log_message("Running Sublist3r...");
-    run_command("sublist3r -d " + target + "-t 5 -o ", "Sublist3r", target_dir + "/sublist3r.txt");
-    tool_message = " Sublist3r is Completed.. ";
+    // httpx-toolkit...
+    log_message("Finding alive Subdomains...");
+    run_command("cat " + target_dir + "/subdomains.txt | httpx-toolkit -ports 80,443,8080,8000,8888 -threads 200 > " + target_dir + "/httpx-toolkit.txt", "Httpx-toolkit", target_dir + "/httpx-toolkit.txt");
+
+    // httprobe... 
+    run_command("cat " + target_dir + "/subdomains.txt | httprobe > " + target_dir + "/httprobe.txt", "Httprobe", target_dir + "/httprobe.txt");
+
+    // sorting httpxtoolkit and httprobe...
+    run_command("cat " + target_dir + "/httpx-toolkit.txt " + target_dir + "/httprobe.txt | sort | uniq > " + target_dir + "/alive-subdomains.txt", "Sorting alive Subdomains", target_dir + "/alive-subdomains.txt");
+    tool_message = "Alive subdomains Completed...";
     send_telegram_message(bot_token, chat_id, tool_message);
 
-    // amass..
-    log_message("Running a Amass..");
-    run_command("amass enum -d " + target + "-o ", "Amass", target_dir+ "/amass.txt");
-    tool_message = "Amass is Completed.. ";
+    // port scanning (Naabu)...
+    log_message("Running Port Scanning...");
+    run_command("naabu -l " + target_dir + "/alive-subdomains.txt", "Port Scanning", target_dir + "/naabu-scan.txt");
+    tool_message = "Port Scanning is Completed";
     send_telegram_message(bot_token, chat_id, tool_message);
-
-
-
-    // sorting a subdomains...
-    log_message("Sorting Subdomains...");
-    run_command("cat " + target_dir + "/subfinder.txt " + target_dir + "/assetfinder.txt | sort | uniq > " + target_dir + "/sorted.txt", "Sorting Subdomains", target_dir + "/sorted.txt");
-    tool_message = format_result("📊 Sorted Subdomains", exec_command(("cat " + target_dir + "/sorted.txt").c_str()));
-    send_telegram_message(bot_token, chat_id, tool_message);
-
-    // httpx-toolkit
-    log_message("httpx-toolkit...");
-    run_command("cat" + target_dir + "/sorted.txt | httpx-toolkit -ports 80,443,8080,8000,8888 -threads 200 > " +target_dir + "/subdomians_alive.txt", "Running the Httpx-toolkit", target_dir + "/subdomain_alive.txt");
-    tool_message = format_result("Httpx-toolkit Results...", exec_command(("cat " + target_dir + "/subdomains_alive.txt" ).c_str()));
-    send_telegram_message(bot_token, chat_id, tool_message);
-
-    // port scaning..
-    log_message("Port Scaning...");
-    run_command("naabu -l" + target_dir + "/subdomains_alive.txt"  )
-
-
 
     log_message("Happy hacking 😇😎.");
     return 0;

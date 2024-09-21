@@ -1,0 +1,43 @@
+# https://www.robotstxt.org/robotstxt.html
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: img2dataset
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Omgili
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: magpie-crawler
+Disallow: /
+
+User-agent: *
+Disallow: /
+Allow: /$
+Allow: /api/share/og/*
+Allow: /g/*
+Disallow: /share/*
+Allow: /images/*
+Allow: /auth/*
+Disallow: /auth/logout
+Allow: /gpts$
+Allow: /search$

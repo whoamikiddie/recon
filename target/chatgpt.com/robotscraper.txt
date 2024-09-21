@@ -1,0 +1,118 @@
+[1;35m
+ ____       _           _   ____                                 
+|  _ \ ___ | |__   ___ | |_/ ___|  ___ _ __ __ _ _ __   ___ _ __ 
+| |_) / _ \| '_ \ / _ \| __\___ \ / __| '__/ _` | '_ \ / _ \ '__|
+|  _ < (_) | |_) | (_) | |_ ___) | (__| | | (_| | |_) |  __/ |   
+|_| \_\___/|_.__/ \___/ \__|____/ \___|_|  \__,_| .__/ \___|_|   
+                                                |_|   
+[0m
+[93mRobotScraper v.1.0 - Open Source Project | [92mAuthor: [93mRobotshell | [92mTwitter: [93mhttps://twitter.com/robotshelld
+[0m
+[96mStarting RobotScraper to recollect directories and pages from [93mrobots.txt [96min [91mchatgpt.com[0m
+[96m[+] Checking if the[93m robots.txt [96mfile exists[0m
+[96m[✓] File[93m robots.txt [96mexists:[0m
+
+# https://www.robotstxt.org/robotstxt.html
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: img2dataset
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Omgili
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: magpie-crawler
+Disallow: /
+
+User-agent: *
+Disallow: /
+Allow: /$
+Allow: /api/share/og/*
+Allow: /g/*
+Disallow: /share/*
+Allow: /images/*
+Allow: /auth/*
+Disallow: /auth/logout
+Allow: /gpts$
+Allow: /search$
+
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/$
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/$
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/api/share/og/*
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/api/share/og/*
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/g/*
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/g/*
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/share/*
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/share/*
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/images/*
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/images/*
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/auth/*
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/auth/*
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/auth/logout
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/auth/logout
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/gpts$
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/gpts$
+[0m
+[96m[+] Checking [93mhttps://chatgpt.com/search$
+[0m[91m[✓] Obtained a [93m403[91m status response code in directory: [93m/search$
+[0m

@@ -1,0 +1,13 @@
+Server:		192.168.0.1
+Address:	192.168.0.1#53
+
+Non-authoritative answer:
+Name:	chatgpt.com
+Address: 172.64.155.209
+Name:	chatgpt.com
+Address: 104.18.32.47
+Name:	chatgpt.com
+Address: 2606:4700:4400::ac40:9bd1
+Name:	chatgpt.com
+Address: 2606:4700:4400::6812:202f
+
