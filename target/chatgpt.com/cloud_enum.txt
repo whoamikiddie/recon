@@ -1,103 +1,0 @@
-
-##########################
-        cloud_enum
-   github.com/initstring
-##########################
-
-
-Keywords:    chatgpt.com
-Mutations:   NONE! (Using quickscan)
-Brute-list:  /home/kiddie/Videos/recon/tools/cloud-enum/enum_tools/fuzz.txt
-
-[+] Mutated results: 1 items
-
-++++++++++++++++++++++++++
-      amazon checks
-++++++++++++++++++++++++++
-
-[+] Checking for S3 buckets
-  [1m[33mProtected S3 Bucket: http://chatgpt.com.s3.amazonaws.com/[0m
-    5/1 complete...                            
- Elapsed time: 00:00:00
-
-[+] Checking for AWS Apps
-[*] Brute-forcing a list of 1 possible DNS names
-    5/1 complete...                            
- Elapsed time: 00:00:00
-
-
-++++++++++++++++++++++++++
-       azure checks
-++++++++++++++++++++++++++
-
-[+] Checking for Azure Storage Accounts
-[*] Brute-forcing a list of 0 possible DNS names
-                                                        
- Elapsed time: 00:00:00
-
-[+] Checking for Azure File Accounts
-[*] Brute-forcing a list of 0 possible DNS names
-                                                        
- Elapsed time: 00:00:00
-
-[+] Checking for Azure Queue Accounts
-[*] Brute-forcing a list of 0 possible DNS names
-                                                        
- Elapsed time: 00:00:00
-
-[+] Checking for Azure Table Accounts
-[*] Brute-forcing a list of 0 possible DNS names
-                                                        
- Elapsed time: 00:00:00
-
-[+] Checking for Azure App Management Accounts
-[*] Brute-forcing a list of 0 possible DNS names
-                                                        
- Elapsed time: 00:00:00
-
-[+] Checking for Azure Key Vault Accounts
-[*] Brute-forcing a list of 0 possible DNS names
-                                                        
- Elapsed time: 00:00:00
-
-[+] Checking for Azure Websites
-[*] Brute-forcing a list of 1 possible DNS names
-    5/1 complete...                            
- Elapsed time: 00:00:00
-
-[+] Checking for Azure Databases
-[*] Brute-forcing a list of 1 possible DNS names
-    5/1 complete...                            
- Elapsed time: 00:00:00
-
-[+] Checking for Azure Virtual Machines
-[*] Testing across 1 regions defined in the config file
-[*] Brute-forcing a list of 1 possible DNS names
-    5/1 complete...                            
- Elapsed time: 00:00:00
-
-
-++++++++++++++++++++++++++
-      google checks
-++++++++++++++++++++++++++
-
-[+] Checking for Google buckets
-    5/1 complete...                            
- Elapsed time: 00:00:01
-
-[+] Checking for Google Firebase Realtime Databases
-                            
- Elapsed time: 00:00:00
-
-[+] Checking for Google App Engine apps
-                            
- Elapsed time: 00:00:00
-
-[+] Checking for project/zones with Google Cloud Functions.
-[*] Testing across 1 regions defined in the config file
-    5/1 complete...                            
- Elapsed time: 00:00:01
-
-
-[+] All done, happy hacking!
-
