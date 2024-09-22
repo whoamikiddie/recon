@@ -1,8 +1,0 @@
-version: '3.2'
-services:
-    asnlookup:
-        build: .
-        volumes:
-            - type: bind
-              source: ./output
-              target: /asnlookup/output
