@@ -8,11 +8,11 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import time
 
-# Colors
+
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
-# User agents
+
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15",
@@ -21,15 +21,14 @@ user_agents = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
 ]
 
-# Get a random user agent
+
 def get_random_user_agent():
     return random.choice(user_agents)
 
-# Logs
+
 def log_message(message):
     print(f"{GREEN}{message}{RESET}")
 
-# Create target directory
 def create_target_directory(target):
     base_dir = "target"
     os.makedirs(base_dir, exist_ok=True)
@@ -37,7 +36,7 @@ def create_target_directory(target):
     os.makedirs(target_dir, exist_ok=True)
     return target_dir
 
-# Get IP address of a target
+
 def get_ip_address(target):
     try:
         return socket.gethostbyname(target)
@@ -45,7 +44,7 @@ def get_ip_address(target):
         log_message(f"Error getting IP address: {e}")
         return ""
 
-# Send HTTP/HTTPS request with retry session
+
 def get_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
     session = requests.Session()
     retry = Retry(
@@ -60,14 +59,14 @@ def get_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502,
     session.mount('https://', adapter)
     return session
 
-# Send HTTP request using retry session
+
 def send_request(url):
     headers = {'User-Agent': get_random_user_agent()}
     session = get_retry_session()
     response = session.get(url, headers=headers)
     return response.text, response.headers
 
-# Read config
+
 def read_config():
     try:
         with open("config.json", "r") as config_file:
@@ -77,13 +76,13 @@ def read_config():
         log_message(f"[ERROR] Config file issue: {e}")
         return None, None
 
-# Write config
+
 def write_config(bot_token, chat_id):
     config = {"bot_token": bot_token, "chat_id": chat_id}
     with open("config.json", "w") as config_file:
         json.dump(config, config_file)
 
-# Send message to Telegram
+
 def send_telegram_message(bot_token, chat_id, message):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {'chat_id': chat_id, 'text': message, 'parse_mode': 'Markdown'}
@@ -93,7 +92,7 @@ def send_telegram_message(bot_token, chat_id, message):
     else:
         log_message("[ERROR] Failed to send message to Telegram.")
 
-# Function to run any command
+
 def run_command(command, tool_name, output_file=None):
     log_message(f"Running {tool_name}...")
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
@@ -107,7 +106,7 @@ def run_command(command, tool_name, output_file=None):
         log_message(f"{tool_name} failed.")
         return result.stderr
 
-# Ask user for confirmation to send messages
+
 def ask_for_telegram_confirmation():
     while True:
         response = input("Do you want to send messages to Telegram? (y/n): ").strip().lower()
@@ -115,7 +114,7 @@ def ask_for_telegram_confirmation():
             return response == 'y'
         print("Invalid input. Please enter 'y' or 'n'.")
 
-# Print banner
+
 def print_banner(target, ip_address, waf_info):
     banner = f"""
 {GREEN}-------------------------------------------------
@@ -174,14 +173,14 @@ def nslookup(target, target_dir, send_telegram, bot_token, chat_id):
 # SSL Checker
 def run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running SSL Checking...")
-    run_command(f"python3 tools/ssl-checker/ssl_checker.py -H {target} > {target_dir}/ssl.txt", "SSL Checker")
+    run_command(f"python3 tools/ssl-checker/ssl_checker.py --host {target} > {target_dir}/ssl.txt", "SSL Checker")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "SSL Checker is completed...")
 
 # Cloud Enumeration
 def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Cloud-Enum... ☁️")
-    run_command(f"python3 tools/cloud-enum/cloud_enum.py -k {target} --quickscan > {target_dir}/cloud_enum.txt", "Cloud Enum")
+    run_command(f"python3 tools/cloud-enum/cloud_enum.py -k {target} -qs > {target_dir}/cloud_enum.txt", "Cloud Enum")
     if send_telegram:
         with open(f"{target_dir}/cloud_enum.txt", 'r') as f:
             cloud_enum_result = f.read()
@@ -190,7 +189,7 @@ def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
 # Robot Scraper
 def run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Robots.txt Scraper... 🤖")
-    run_command(f"python3 tools/robot-scraper/robot_scraper.py {target} > {target_dir}/robot.txt", "Robots.txt Scraper")
+    run_command(f"python3 tools/robot-scraper/robot_scraper.py -d {target} > {target_dir}/robot.txt", "Robots.txt Scraper")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "🤖 Robots.txt Scraper is completed...")
 
@@ -281,7 +280,7 @@ def port_scanning(target_dir, send_telegram, bot_token, chat_id):
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "Port scanning is completed!")
 
-# Main function
+
 def main():
     target = input("Enter the target domain (e.g., example.com): ")
     target_dir = create_target_directory(target)
