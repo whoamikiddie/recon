@@ -6,7 +6,7 @@ import json
 import os
 import argparse
 
-R = '\033[31m'  #
+R = '\033[31m'  # red
 G = '\033[32m'  # green
 C = '\033[36m'  # cyan
 W = '\033[0m'   # white
@@ -147,7 +147,7 @@ def cert(hostname, output):
     log_writer('[sslinfo] Completed')
 
 # Command-line argument parsing
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="SSL Certificate Information Retrieval Tool")
     parser.add_argument("-d", "--domain", required=True, help="The domain to scan for SSL certificate")
     parser.add_argument("-o", "--output", type=str, default=".", help="Directory to save output (default: current directory)")
@@ -161,3 +161,5 @@ if __name__ == "__main__":
     }
 
     cert(args.domain, output)
+if __name__ == '__main__':
+    main()

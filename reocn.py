@@ -114,7 +114,7 @@ def ask_for_telegram_confirmation():
             return response == 'y'
         print("Invalid input. Please enter 'y' or 'n'.")
 
-
+# Print banner
 def print_banner(target, ip_address, waf_info):
     banner = f"""
 {GREEN}-------------------------------------------------
@@ -173,14 +173,14 @@ def nslookup(target, target_dir, send_telegram, bot_token, chat_id):
 # SSL Checker
 def run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running SSL Checking...")
-    run_command(f"python3 tools/ssl-checker/ssl_checker.py --host {target} > {target_dir}/ssl.txt", "SSL Checker")
+    run_command(f"python3 tools/ssl-checker/ssl_checker.py -H {target} > {target_dir}/ssl.txt", "SSL Checker")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "SSL Checker is completed...")
 
 # Cloud Enumeration
 def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Cloud-Enum... ☁️")
-    run_command(f"python3 tools/cloud-enum/cloud_enum.py -k {target} -qs > {target_dir}/cloud_enum.txt", "Cloud Enum")
+    run_command(f"python3 tools/cloud-enum/cloud_enum.py -k {target} --quickscan > {target_dir}/cloud_enum.txt", "Cloud Enum")
     if send_telegram:
         with open(f"{target_dir}/cloud_enum.txt", 'r') as f:
             cloud_enum_result = f.read()
@@ -189,7 +189,7 @@ def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
 # Robot Scraper
 def run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Robots.txt Scraper... 🤖")
-    run_command(f"python3 tools/robot-scraper/robot_scraper.py -d {target} > {target_dir}/robot.txt", "Robots.txt Scraper")
+    run_command(f"python3 tools/robot-scraper/robot_scraper.py {target} > {target_dir}/robot.txt", "Robots.txt Scraper")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "🤖 Robots.txt Scraper is completed...")
 
