@@ -277,7 +277,6 @@ def crawling(target, target_dir, send_telegram, bot_token, chat_id):
 def port_scanning(target_dir, send_telegram, bot_token, chat_id):
     log_message("Running port scanning...")
     run_command(f"naabu -l {target_dir}/alive-subdomains.txt > {target_dir}/naabu-scan.txt", "Port Scanning")
-    run_command(f"nmap  {target} -sV -Pn --script=http-enum -o {target_dir}/nmap-scan.txt",  "Port Scanning")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "Port scanning is completed!")
 
