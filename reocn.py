@@ -13,7 +13,7 @@ import tldextract
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
-
+#--->  random agents
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15",
@@ -26,7 +26,7 @@ user_agents = [
 def get_random_user_agent():
     return random.choice(user_agents)
 
-
+#---> logs
 def log_message(message):
     print(f"{GREEN}{message}{RESET}")
 
@@ -37,7 +37,7 @@ def create_target_directory(target):
     os.makedirs(target_dir, exist_ok=True)
     return target_dir
 
-
+#--> ips
 def get_ip_address(target):
     try:
         return socket.gethostbyname(target)
@@ -93,7 +93,7 @@ def send_telegram_message(bot_token, chat_id, message):
     else:
         log_message("[ERROR] Failed to send message to Telegram.")
 
-
+# ---> for exec of shell cmds
 def run_command(command, tool_name, output_file=None):
     log_message(f"Running {tool_name}...")
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
@@ -115,7 +115,7 @@ def ask_for_telegram_confirmation():
             return response == 'y'
         print("Invalid input. Please enter 'y' or 'n'.")
 
-# Print banner
+#--> Print banner
 def print_banner(target, ip_address, waf_info):
     banner = f"""
 {GREEN}-------------------------------------------------
@@ -134,12 +134,12 @@ def print_banner(target, ip_address, waf_info):
     """
     print(banner)
 
-# Format result for message
+
 def format_result(tool_name, result):
     message = f"*[{tool_name}]*\n\n```\n{result}\n```"
     return message
 
-# Detect WAF using wafw00f
+#---> waf detection..!
 def detect_waf(target):
     command = f"wafw00f {target}"
     output = run_command(command, "WAF Detection")
@@ -147,7 +147,7 @@ def detect_waf(target):
         return output.split("is behind")[1].strip()
     return "Unknown"
 
-# Whois lookup
+#---> Whois 
 def whois_lookup(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Whois Lookup... 🔧")
     output = run_command(f"python3 tools/whois.py -d {target} -o {target_dir}/whois.txt")
@@ -159,7 +159,7 @@ def whois_lookup(target, target_dir, send_telegram, bot_token, chat_id):
     if send_telegram:
         send_telegram_message(bot_token, chat_id, tool_message)
 
-# NSLookup
+#--> NSLookup
 def nslookup(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running NSLookup... 🔧")
     output = run_command(f"nslookup {target}", "NSLookup", f"{target_dir}/nslookup.txt")
@@ -171,10 +171,10 @@ def nslookup(target, target_dir, send_telegram, bot_token, chat_id):
     if send_telegram:
         send_telegram_message(bot_token, chat_id, tool_message)
 
-# SSL Checker
+#--> SSL Checker
 def run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running SSL Checking...")
-    run_command(f"python3 tools/ssl-checker/ssl_checker.py -H {target} > {target_dir}/ssl.txt", "SSL Checker")
+    run_command(f"./tools/ssl/ssl-tool -d {target} -o {target_dir}/ssl.txt", "SSL Checker")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "SSL Checker is completed...")
 
@@ -314,8 +314,8 @@ def main():
     print_banner(target, ip_address, detect_waf(target))
     #whois_lookup(target, target_dir, send_telegram,bot_token, chat_id)
     #nslookup(target, target_dir, send_telegram, bot_token, chat_id)
-    #run_ssl_checker(target, target_dir, send_telegram, bot_token,chat_id)
-    run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id)
+    run_ssl_checker(target, target_dir, send_telegram, bot_token,chat_id)
+    #run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id)
     #run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id)
     #run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id)
     #run_alive_subdomains(target, target_dir, send_telegram, bot_token, chat_id)
