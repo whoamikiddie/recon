@@ -178,7 +178,7 @@ def run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id):
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "SSL Checker is completed...")
 
-# Cloud Enumeration
+#--> Cloud Enumeration
 def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Cloud-Enum... ☁️")
 
@@ -208,22 +208,21 @@ def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
 
 
 
-# Robot Scraper
+# --> Robot Scraper
 def run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Robots.txt Scraper... 🤖")
     run_command(f"python3 tools/robot-scraper/robot_scraper.py {target} > {target_dir}/robot.txt", "Robots.txt Scraper")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "🤖 Robots.txt Scraper is completed...")
 
-# Subdomain Finding
+#---> Subdomain Finding
 def run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Finding Subdomains...")
     
-    # Ensure commands run in sequence and handle failures
+    
     run_command(f"subfinder -d {target} > {target_dir}/subfinder.txt", "Subfinder")
     run_command(f"assetfinder -subs-only {target} > {target_dir}/assetfinder.txt", "Assetfinder")
     
-    # Combine results into one file
     run_command(f"cat {target_dir}/subfinder.txt {target_dir}/assetfinder.txt | sort | uniq > {target_dir}/subdomains.txt", "Sorting Subdomains")
     
     if send_telegram:
@@ -231,71 +230,58 @@ def run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id):
             subdomain_result = f.read()
         send_telegram_message(bot_token, chat_id, f"✨ Subdomain Finder\n\n{subdomain_result}\n")
 
-# Alive Subdomains
+#--> Alive Subdomains
 def run_alive_subdomains(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Checking alive subdomains...")
 
-    # Running httpx-toolkit
+    #--> Running httpx-toolkit
     run_command(f"httpx-toolkit -l {target_dir}/subdomains.txt -ports 80,443,8080,8000,8888 -threads 200 > {target_dir}/httpx-toolkit.txt", "Httpx-toolkit")
 
-    # Running httprobe
+    #-->Running httprobe
     run_command(f"httprobe < {target_dir}/subdomains.txt > {target_dir}/httprobe.txt", "Httprobe")
-
-    # Sorting results
     run_command(f"cat {target_dir}/httpx-toolkit.txt {target_dir}/httprobe.txt | sort | uniq > {target_dir}/alive-subdomains.txt", "Sorting alive subdomains")
-
-    # Sending the results via Telegram if needed
+   
     if send_telegram:
         with open(f"{target_dir}/alive-subdomains.txt", 'r') as f:
             alive_subdomain_result = f.read()
         send_telegram_message(bot_token, chat_id, f"✅ Alive Subdomains\n\n{alive_subdomain_result}\n")
 
-# Crawling
+#--> Crawling
 def crawling(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Crawling...")
 
     combined_urls_file = f"{target_dir}/combined_urls.txt"
     js_urls_file = f"{target_dir}/js.txt"
-
-    # Running Waybackurls with a time limit of 5 minutes
     log_message("Running Waybackurls...hold tight! ⏳")
     try:
         subprocess.run(f"timeout 5m waybackurls < {target_dir}/alive-subdomains.txt > {target_dir}/waybackurls.txt", shell=True, check=True)
         log_message("Waybackurls completed! 🎉")
-        # Append Waybackurls results to the combined file
         subprocess.run(f"cat {target_dir}/waybackurls.txt >> {combined_urls_file}", shell=True)
     except subprocess.CalledProcessError:
         log_message("Waybackurls hit the 5-minute limit. 🛑")
-
-    # Running Gau with a time limit of 5 minutes
     log_message("Running Gau... almost there! 😅")
     try:
         subprocess.run(f"timeout 5m gau < {target_dir}/alive-subdomains.txt > {target_dir}/gau.txt", shell=True, check=True)
         log_message("Gau finished! 🍀")
-        # Append Gau results to the combined file
+
         subprocess.run(f"cat {target_dir}/gau.txt >> {combined_urls_file}", shell=True)
     except subprocess.CalledProcessError:
         log_message("Gau took too long and was stopped after 5 minutes. 😬")
 
-    # Katana Crawling
+    #--> Katana Crawling
     log_message("Unleashing Katana... 🗡️")
     run_command(f"katana -u {target_dir}/alive-subdomains.txt -d 5 -ps -pss waybackarchive,commoncrawl,alienvault -kf -jc -fx -ef woff,css,png,svg,jpg,woff2,jpeg,gif,svg -o {target_dir}/katana.txt", "Katana")
-    
-    # Append Katana results to the combined file
     subprocess.run(f"cat {target_dir}/katana.txt >> {combined_urls_file}", shell=True)
 
-    # Extract .js URLs
     log_message("Extracting JavaScript URLs... 🔍")
     subprocess.run(f"grep -E '\\.js$' {combined_urls_file} >> {js_urls_file}", shell=True)  # Use double backslash
     log_message(f"JavaScript URLs saved to {js_urls_file} ✅")
 
     log_message(f"All URLs have been combined into {combined_urls_file} ✅")
-
-    # Notify on Telegram if enabled
     if send_telegram:
         send_telegram_message(bot_token, chat_id, f"Crawling is done for {target}! 🕵️‍♂️ Combined URLs are stored in {combined_urls_file}. JavaScript URLs are saved in {js_urls_file}.")
 
-# Port Scanning
+#--> Port Scanning
 def port_scanning(target_dir, send_telegram, bot_token, chat_id):
     log_message("Running port scanning...")
     run_command(f"naabu -l {target_dir}/alive-subdomains.txt > {target_dir}/naabu-scan.txt", "Port Scanning")
