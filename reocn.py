@@ -7,6 +7,7 @@ import socket
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import time
+import tldextract
 
 
 GREEN = "\033[32m"
@@ -149,7 +150,7 @@ def detect_waf(target):
 # Whois lookup
 def whois_lookup(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Whois Lookup... 🔧")
-    output = run_command(f"whois {target} | grep -E 'Domain Name|Registry|Registrar|Updated|Creation|Registrant|Name Server|DNSSEC|Status'", "Whois Lookup", f"{target_dir}/whois.txt")
+    output = run_command(f"python3 tools/whois.py -d {target} -o {target_dir}/whois.txt")
     
     with open(f"{target_dir}/whois.txt", 'r') as f:
         whois_result = f.read()
@@ -180,11 +181,32 @@ def run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id):
 # Cloud Enumeration
 def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Cloud-Enum... ☁️")
-    run_command(f"python3 tools/cloud-enum/cloud_enum.py -k {target} --quickscan > {target_dir}/cloud_enum.txt", "Cloud Enum")
+
+    # ---> cloud_enum
+    run_command(f"cloud_enum -k {target} > {target_dir}/cloud_enum.txt", "Cloud Enum")
+
+    # ---> cloudBrute
+    extracted = tldextract.extract(target)
+    main_keywords = extracted.domain
+
+    cloudbrute_command = (
+        f"cloudbrute -d {target} -k {main_keywords} -t 80 -T 10 "
+        f"-w ./tools/data/storage_small.txt -C /etc/cloudbrute/config -m storage -o {target_dir}/cloudbrute.txt"
+    )
+    
+    cloudbrute_result = run_command(cloudbrute_command, "Cloud Brute")
+
+    if cloudbrute_result['success']:
+        log_message("Cloud Brute completed successfully.")
+    else:
+        log_message(f"Cloud Brute encountered an error: {cloudbrute_result['output']}")
+
     if send_telegram:
         with open(f"{target_dir}/cloud_enum.txt", 'r') as f:
             cloud_enum_result = f.read()
         send_telegram_message(bot_token, chat_id, f"☁️ Cloud Enum\n```\n{cloud_enum_result}\n```")
+
+
 
 # Robot Scraper
 def run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id):
@@ -290,15 +312,15 @@ def main():
     send_telegram = ask_for_telegram_confirmation() if bot_token and chat_id else False
 
     print_banner(target, ip_address, detect_waf(target))
-    whois_lookup(target, target_dir, send_telegram,bot_token, chat_id)
-    nslookup(target, target_dir, send_telegram, bot_token, chat_id)
-    run_ssl_checker(target, target_dir, send_telegram, bot_token,chat_id)
+    #whois_lookup(target, target_dir, send_telegram,bot_token, chat_id)
+    #nslookup(target, target_dir, send_telegram, bot_token, chat_id)
+    #run_ssl_checker(target, target_dir, send_telegram, bot_token,chat_id)
     run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id)
-    run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id)
-    run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id)
-    run_alive_subdomains(target, target_dir, send_telegram, bot_token, chat_id)
-    crawling(target, target_dir, send_telegram, bot_token, chat_id)
-    port_scanning(target_dir, send_telegram, bot_token, chat_id)
+    #run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id)
+    #run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id)
+    #run_alive_subdomains(target, target_dir, send_telegram, bot_token, chat_id)
+    #crawling(target, target_dir, send_telegram, bot_token, chat_id)
+    #port_scanning(target_dir, send_telegram, bot_token, chat_id)
 
 if __name__ == "__main__":
     main()
