@@ -3,93 +3,195 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"os/signal"
+	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
 
-func getRobots(domain string, enableSave bool, filename string) {
-	fmt.Printf("Starting RobotScraper to recollect directories and pages from robots.txt in %s\n", domain)
+func init() {
+	rand.Seed(int64(rand.Intn(100000)))
+}
 
-	resp, err := http.Get("https://" + domain + "/robots.txt")
+var userAgents = []string{
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0.2 Safari/605.1.15",
+	"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+	"Mozilla/5.0 (iPhone; CPU iPhone OS X 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
+}
+
+func getUserAgent() string {
+	return userAgents[rand.Intn(len(userAgents))]
+}
+
+func getRobots(domain string, enableSave bool, filename string, client *http.Client, wg *sync.WaitGroup) {
+	defer wg.Done() // Signal that this goroutine is done
+	fmt.Printf("Fetching robots.txt for %s...\n", domain)
+
+	req, _ := http.NewRequest("GET", "https://"+domain+"/robots.txt", nil)
+	req.Header.Set("User-Agent", getUserAgent())
+	resp, err := client.Do(req)
+
 	if err != nil {
-		fmt.Printf("Error fetching robots.txt: %v\n", err)
-		return
+		req.URL.Scheme = "http"
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Printf("Error fetching robots.txt: %v\n", err)
+			return
+		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 200 {
-		fmt.Println("File robots.txt exists:")
-		scanner := bufio.NewScanner(resp.Body)
-
-		var directories []string
-
-		for scanner.Scan() {
-			line := scanner.Text()
-			fmt.Println(line) // Display the line in the terminal
-
-			if strings.HasPrefix(line, "Allow:") || strings.HasPrefix(line, "Disallow:") {
-				directory := strings.TrimSpace(strings.Replace(line, "Allow:", "", 1))
-				directory = strings.TrimSpace(strings.Replace(directory, "Disallow:", "", 1))
-
-				if strings.HasPrefix(directory, "/") {
-					newDomain := "https://" + domain + directory
-					r2, err := http.Get(newDomain)
-					if err == nil {
-						fmt.Printf("Checking %s ", newDomain)
-						if r2.StatusCode == 200 {
-							fmt.Printf("[✓] Obtained a 200 OK success status response code in directory: %s\n", directory)
-							if enableSave {
-								directories = append(directories, directory)
-							}
-						} else if r2.StatusCode == 302 {
-							fmt.Printf("[✓] Obtained a 302 Found redirect status response code in directory: %s\n", directory)
-						} else {
-							fmt.Printf("[✗] Obtained a %d status response code in directory: %s\n", r2.StatusCode, directory)
-						}
-						r2.Body.Close()
-					} else {
-						fmt.Printf("Error checking %s: %v\n", newDomain, err)
-					}
-				}
-			}
-		}
-
-		if enableSave {
-			file, err := os.Create(filename)
-			if err != nil {
-				fmt.Printf("Error creating file: %v\n", err)
-				return
-			}
-			defer file.Close()
-
-			for _, dir := range directories {
-				file.WriteString(dir + "\n")
-			}
-		}
+		processRobots(resp.Body, enableSave, filename, domain)
 	} else {
-		fmt.Printf("robots.txt file not found. Status code: %d\n", resp.StatusCode)
+		log.Printf("robots.txt file not found for %s. Status code: %d\n", domain, resp.StatusCode)
 	}
+}
+
+func processRobots(body io.Reader, enableSave bool, filename, domain string) {
+	scanner := bufio.NewScanner(body)
+	var allowed, disallowed []string
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		extractDirectories(line, &allowed, &disallowed)
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("Error reading robots.txt for %s: %v\n", domain, err)
+		return
+	}
+
+	if enableSave {
+		saveAsText(filename, allowed, disallowed, domain)
+	}
+}
+
+func extractDirectories(line string, allowed, disallowed *[]string) {
+	re := regexp.MustCompile(`(?i)^(Allow:|Disallow:)\s*(.*)`)
+	matches := re.FindStringSubmatch(line)
+
+	if len(matches) == 3 {
+		directory := strings.TrimSpace(matches[2])
+		if strings.HasPrefix(directory, "/") {
+			if strings.EqualFold(matches[1], "Allow:") {
+				*allowed = append(*allowed, directory)
+			} else {
+				*disallowed = append(*disallowed, directory)
+			}
+		}
+	}
+}
+
+func saveAsText(filename string, allowed, disallowed []string, domain string) {
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Printf("Error creating file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	animateSaving(domain)
+
+	baseURL := "https://" + domain
+
+	fmt.Fprintf(file, "Robots.txt for %s\n", domain)
+	fmt.Fprintf(file, "\nAllowed URLs:\n")
+	for _, dir := range allowed {
+		fullURL := baseURL + dir
+		if _, err := file.WriteString(fullURL + "\n"); err != nil {
+			log.Printf("Error writing to file: %v\n", err)
+		}
+	}
+
+	fmt.Fprintf(file, "\nDisallowed URLs:\n")
+	for _, dir := range disallowed {
+		fullURL := baseURL + dir
+		if _, err := file.WriteString(fullURL + "\n"); err != nil {
+			log.Printf("Error writing to file: %v\n", err)
+		}
+	}
+	log.Printf("Saved directories to %s\n", filename)
+}
+
+func animateSaving(domain string) {
+	message := fmt.Sprintf("Saving results for %s...", domain)
+	lowerstr := message
+
+	for x := 0; x <= len(lowerstr); x++ {
+		s := "\r" + lowerstr[0:x] + lowerstr[x:] + "\033[K"
+		fmt.Print(s)
+		time.Sleep(100 * time.Millisecond)
+	}
+	fmt.Print("\n")
+}
+
+func usage() {
+	fmt.Println("Usage: go run main.go -d <domain1,domain2,...> [-s <filename>]")
+	fmt.Println("Options:")
+	fmt.Println("  -d, --domain    Specify one or more domains to scrape, separated by commas.")
+	fmt.Println("  -s, --save      Specify a filename to save the output in text format. (default: output.txt)")
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("ERROR: No domain or parameters found")
+		usage()
 		return
 	}
 
-	var domain string
+	var domains []string
 	var enableSave bool
-	var filename string
+	var filename string = "output.txt"
 
-	if os.Args[1] == "-d" || os.Args[1] == "--domain" {
-		domain = os.Args[2]
-		if len(os.Args) > 3 && (os.Args[3] == "-s" || os.Args[3] == "--save") {
-			enableSave = true
-			filename = os.Args[4]
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
+	var wg sync.WaitGroup
+	client := &http.Client{}
+
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "-d", "--domain":
+			if i+1 < len(os.Args) {
+				domains = strings.Split(os.Args[i+1], ",")
+				i++
+			} else {
+				usage()
+				return
+			}
+		case "-s", "--save":
+			if i+1 < len(os.Args) {
+				enableSave = true
+				filename = os.Args[i+1]
+				i++
+			} else {
+				usage()
+				return
+			}
+		default:
+			log.Println("ERROR: Incorrect argument or syntax")
+			usage()
+			return
 		}
-		getRobots(domain, enableSave, filename)
-	} else {
-		fmt.Println("ERROR: Incorrect argument or syntax")
 	}
+
+	for _, domain := range domains {
+		select {
+		case <-stop:
+			log.Println("Shutting down gracefully...")
+			wg.Wait()
+			return
+		default:
+			wg.Add(1)
+			go getRobots(domain, enableSave, filename, client, &wg)
+		}
+	}
+	wg.Wait()
 }
