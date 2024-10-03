@@ -6,14 +6,12 @@ import random
 import socket
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import time
 import tldextract
-
 
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
-#--->  random agents
+#---> random agents
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15",
@@ -21,7 +19,6 @@ user_agents = [
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
 ]
-
 
 def get_random_user_agent():
     return random.choice(user_agents)
@@ -45,7 +42,6 @@ def get_ip_address(target):
         log_message(f"Error getting IP address: {e}")
         return ""
 
-
 def get_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
     session = requests.Session()
     retry = Retry(
@@ -60,29 +56,25 @@ def get_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502,
     session.mount('https://', adapter)
     return session
 
-
 def send_request(url):
     headers = {'User-Agent': get_random_user_agent()}
     session = get_retry_session()
     response = session.get(url, headers=headers)
     return response.text, response.headers
 
-
 def read_config():
     try:
         with open("config.json", "r") as config_file:
             config = json.load(config_file)
-            return config["bot_token"], config["chat_id"]
+            return config.get("bot_token"), config.get("chat_id")
     except (FileNotFoundError, KeyError) as e:
         log_message(f"[ERROR] Config file issue: {e}")
         return None, None
-
 
 def write_config(bot_token, chat_id):
     config = {"bot_token": bot_token, "chat_id": chat_id}
     with open("config.json", "w") as config_file:
         json.dump(config, config_file)
-
 
 def send_telegram_message(bot_token, chat_id, message):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -102,11 +94,10 @@ def run_command(command, tool_name, output_file=None):
         if output_file:
             with open(output_file, 'w') as f:
                 f.write(result.stdout)
-        return result.stdout
+        return {'success': True, 'output': result.stdout}
     else:
         log_message(f"{tool_name} failed.")
-        return result.stderr
-
+        return {'success': False, 'output': result.stderr}
 
 def ask_for_telegram_confirmation():
     while True:
@@ -134,58 +125,63 @@ def print_banner(target, ip_address, waf_info):
     """
     print(banner)
 
-
 def format_result(tool_name, result):
     message = f"*[{tool_name}]*\n\n```\n{result}\n```"
     return message
 
-#---> waf detection..!
+#---> waf detection
 def detect_waf(target):
     command = f"wafw00f {target}"
     output = run_command(command, "WAF Detection")
-    if "is behind" in output:
-        return output.split("is behind")[1].strip()
+    if "is behind" in output['output']:
+        return output['output'].split("is behind")[1].strip()
     return "Unknown"
 
 #---> Whois 
 def whois_lookup(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Whois Lookup... 🔧")
-    output = run_command(f"python3 tools/whois.py -d {target} -o {target_dir}/whois.txt")
-    
-    with open(f"{target_dir}/whois.txt", 'r') as f:
-        whois_result = f.read()
-    
-    tool_message = format_result("🔧 Whois Lookup", whois_result)
-    if send_telegram:
-        send_telegram_message(bot_token, chat_id, tool_message)
+    output = run_command(f"go run tools/whois/whoislookup.go -d {target} -o {target_dir}/whois.txt", "Whois Lookup")
+
+    if output['success']:
+        # Check if the output file exists before trying to read it
+        whois_file_path = f"{target_dir}/whois.txt"
+        if os.path.exists(whois_file_path):
+            with open(whois_file_path, 'r') as f:
+                whois_result = f.read()
+            
+            tool_message = format_result("🔧 Whois Lookup", whois_result)
+            if send_telegram:
+                send_telegram_message(bot_token, chat_id, tool_message)
+        else:
+            log_message(f"[ERROR] Whois file not found: {whois_file_path}")
+    else:
+        log_message(f"Whois Lookup failed: {output['output']}")
+
 
 #--> NSLookup
 def nslookup(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running NSLookup... 🔧")
     output = run_command(f"nslookup {target}", "NSLookup", f"{target_dir}/nslookup.txt")
     
-    with open(f"{target_dir}/nslookup.txt", 'r') as f:
-        nslookup_result = f.read()
-    
-    tool_message = format_result("🔍 NSLookup", nslookup_result)
-    if send_telegram:
-        send_telegram_message(bot_token, chat_id, tool_message)
+    if output['success']:
+        with open(f"{target_dir}/nslookup.txt", 'r') as f:
+            nslookup_result = f.read()
+        
+        tool_message = format_result("🔍 NSLookup", nslookup_result)
+        if send_telegram:
+            send_telegram_message(bot_token, chat_id, tool_message)
 
 #--> SSL Checker
 def run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running SSL Checking...")
-    run_command(f"./tools/ssl/ssl-tool -d {target} -o {target_dir}/ssl.txt", "SSL Checker")
+    output = run_command(f"go run tools/ssl/ssl-tool.go -d {target} -o {target_dir}/ssl.txt", "SSL Checker")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "SSL Checker is completed...")
 
-#--> Cloud Enumeration
 def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Cloud-Enum... ☁️")
-
-    # ---> cloud_enum
     run_command(f"cloud_enum -k {target} > {target_dir}/cloud_enum.txt", "Cloud Enum")
 
-    # ---> cloudBrute
     extracted = tldextract.extract(target)
     main_keywords = extracted.domain
 
@@ -194,31 +190,27 @@ def run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id):
         f"-w ./tools/data/storage_small.txt -C /etc/cloudbrute/config -m storage -o {target_dir}/cloudbrute.txt"
     )
     
-    cloudbrute_result = run_command(cloudbrute_command, "Cloud Brute")
+    cloudbrute_output = run_command(cloudbrute_command, "Cloud Brute")
 
-    if cloudbrute_result['success']:
+    if cloudbrute_output['success']:
         log_message("Cloud Brute completed successfully.")
     else:
-        log_message(f"Cloud Brute encountered an error: {cloudbrute_result['output']}")
+        log_message(f"Cloud Brute encountered an error: {cloudbrute_output['output']}")
 
     if send_telegram:
         with open(f"{target_dir}/cloud_enum.txt", 'r') as f:
             cloud_enum_result = f.read()
         send_telegram_message(bot_token, chat_id, f"☁️ Cloud Enum\n```\n{cloud_enum_result}\n```")
 
-
-
-# --> Robot Scraper
 def run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Running Robots.txt Scraper... 🤖")
-    run_command(f"python3 tools/robot-scraper/robot_scraper.py {target} > {target_dir}/robot.txt", "Robots.txt Scraper")
+    output = run_command(f"go run tools/robot-scraper/robot.go -d {target} -s {target_dir}/robot.txt", "Robots.txt Scraper")
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "🤖 Robots.txt Scraper is completed...")
 
 #---> Subdomain Finding
 def run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id):
     log_message("Finding Subdomains...")
-    
     
     run_command(f"subfinder -d {target} > {target_dir}/subfinder.txt", "Subfinder")
     run_command(f"assetfinder -subs-only {target} > {target_dir}/assetfinder.txt", "Assetfinder")
@@ -252,6 +244,7 @@ def crawling(target, target_dir, send_telegram, bot_token, chat_id):
 
     combined_urls_file = f"{target_dir}/combined_urls.txt"
     js_urls_file = f"{target_dir}/js.txt"
+    
     log_message("Running Waybackurls...hold tight! ⏳")
     try:
         subprocess.run(f"timeout 5m waybackurls < {target_dir}/alive-subdomains.txt > {target_dir}/waybackurls.txt", shell=True, check=True)
@@ -259,11 +252,11 @@ def crawling(target, target_dir, send_telegram, bot_token, chat_id):
         subprocess.run(f"cat {target_dir}/waybackurls.txt >> {combined_urls_file}", shell=True)
     except subprocess.CalledProcessError:
         log_message("Waybackurls hit the 5-minute limit. 🛑")
+
     log_message("Running Gau... almost there! 😅")
     try:
         subprocess.run(f"timeout 5m gau < {target_dir}/alive-subdomains.txt > {target_dir}/gau.txt", shell=True, check=True)
         log_message("Gau finished! 🍀")
-
         subprocess.run(f"cat {target_dir}/gau.txt >> {combined_urls_file}", shell=True)
     except subprocess.CalledProcessError:
         log_message("Gau took too long and was stopped after 5 minutes. 😬")
@@ -274,7 +267,7 @@ def crawling(target, target_dir, send_telegram, bot_token, chat_id):
     subprocess.run(f"cat {target_dir}/katana.txt >> {combined_urls_file}", shell=True)
 
     log_message("Extracting JavaScript URLs... 🔍")
-    subprocess.run(f"grep -E '\\.js$' {combined_urls_file} >> {js_urls_file}", shell=True)  # Use double backslash
+    subprocess.run(f"grep -E '\\.js$' {combined_urls_file} >> {js_urls_file}", shell=True)
     log_message(f"JavaScript URLs saved to {js_urls_file} ✅")
 
     log_message(f"All URLs have been combined into {combined_urls_file} ✅")
@@ -288,7 +281,6 @@ def port_scanning(target_dir, send_telegram, bot_token, chat_id):
     if send_telegram:
         send_telegram_message(bot_token, chat_id, "Port scanning is completed!")
 
-
 def main():
     target = input("Enter the target domain (e.g., example.com): ")
     target_dir = create_target_directory(target)
@@ -298,16 +290,15 @@ def main():
     send_telegram = ask_for_telegram_confirmation() if bot_token and chat_id else False
 
     print_banner(target, ip_address, detect_waf(target))
-    #whois_lookup(target, target_dir, send_telegram,bot_token, chat_id)
-    #nslookup(target, target_dir, send_telegram, bot_token, chat_id)
-    run_ssl_checker(target, target_dir, send_telegram, bot_token,chat_id)
-    #run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id)
-    #run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id)
-    #run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id)
-    #run_alive_subdomains(target, target_dir, send_telegram, bot_token, chat_id)
-    #crawling(target, target_dir, send_telegram, bot_token, chat_id)
-    #port_scanning(target_dir, send_telegram, bot_token, chat_id)
+    whois_lookup(target, target_dir, send_telegram, bot_token, chat_id)
+    nslookup(target, target_dir, send_telegram, bot_token, chat_id)
+    run_ssl_checker(target, target_dir, send_telegram, bot_token, chat_id)
+    run_cloud_enum(target, target_dir, send_telegram, bot_token, chat_id)
+    run_robot_scraper(target, target_dir, send_telegram, bot_token, chat_id)
+    run_subdomain_finder(target, target_dir, send_telegram, bot_token, chat_id)
+    run_alive_subdomains(target, target_dir, send_telegram, bot_token, chat_id)
+    crawling(target, target_dir, send_telegram, bot_token, chat_id)
+    port_scanning(target_dir, send_telegram, bot_token, chat_id)
 
 if __name__ == "__main__":
     main()
-

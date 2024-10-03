@@ -130,7 +130,7 @@ func whoisLookup(domain string, tld string, scriptPath string, output string, fo
 		if err != nil {
 			fmt.Printf("[-] Error writing to file: %s\n", err)
 		} else {
-			fmt.Printf("Exporting to %s with data:\n%s\n", output, whoisInfoRaw)
+			fmt.Printf("[+] Exported to %s\n", output)
 		}
 	}
 
