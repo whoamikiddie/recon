@@ -150,7 +150,20 @@ func nslookup(target string, targetDir string, sendTelegram bool, botToken strin
 	}
 }
 
-func ssl
+func ssl_scan(target string, targetDir string, sendTelegram bool, botToken string, chatId string){
+	logMessage("Gathering  SSL cert ... " )
+	_, err := runCommnad(fmt.Sprintf("go run  ssl-tool.go  -d " target , "-s ssl.txt" targetDir))
+	if err != nil {
+		logMessage("[ERROR] Ssl Failed..!)
+		return
+        }
+
+	if sendTelegram{
+		result, _ := ioutil.ReadFile(fmt.Sprintf("%s/ssl.txt", targetDir))
+		sendTelegram(botToken, chatID, string(result))
+	}
+}
+					 
 
 // Main function
 func main() {
