@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Constants for color codes and content types
+// Constant
 const (
 	GREEN             = "\033[32m"
 	RED               = "\033[31m"
@@ -28,20 +28,20 @@ const (
 	SubdomainFileName = "subdomains.txt"
 )
 
-// User agents
+// user agents
 var userAgents = []string{
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...",
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ...",
 	// Add more user agents as needed...
 }
 
-// Config struct
+// config file
 type Config struct {
 	BotToken string `json:"bot_token"`
 	ChatID   string `json:"chat_id"`
 }
 
-// Logging functions
+// Logs
 func logMessage(message string) {
 	fmt.Printf("%s%s%s\n", GREEN, message, RESET)
 }
@@ -50,7 +50,7 @@ func logError(err error, context string) {
 	fmt.Printf("%s[ERROR] %s: %s%s\n", RED, context, err.Error(), RESET)
 }
 
-// Create target directory
+// Create dir
 func createTargetDirectory(target string) string {
 	baseDir := "target"
 	os.MkdirAll(baseDir, os.ModePerm)
@@ -59,13 +59,13 @@ func createTargetDirectory(target string) string {
 	return targetDir
 }
 
-// Get random user agent
+// random user agent
 func getRandomUserAgent() string {
 	rand.Seed(time.Now().UnixNano())
 	return userAgents[rand.Intn(len(userAgents))]
 }
 
-// Read config from file
+// Read config
 func readConfig(filePath string) (string, string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -82,7 +82,7 @@ func readConfig(filePath string) (string, string, error) {
 	return config.BotToken, config.ChatID, nil
 }
 
-// Send Telegram message
+// Telegram message
 func sendTelegramMessage(botToken, chatID, message string) error {
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
 	payload := fmt.Sprintf(`{"chat_id":"%s","text":"%s","parse_mode":"Markdown"}`, chatID, message)
@@ -116,7 +116,7 @@ func runCommand(command string) (string, error) {
 	return string(output), err
 }
 
-// Get IPv4 address for a domain
+// IPv4 address for a domain
 func getIP(target string) (string, error) {
 	ips, err := net.LookupIP(target)
 	if err != nil {
@@ -132,14 +132,13 @@ func getIP(target string) (string, error) {
 	return "", fmt.Errorf("no IPv4 address found for target: %s", target)
 }
 
-// Check if the target is a valid IP address
 func isValidIP(ip string) bool {
 	ipRegex := `^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`
 	re := regexp.MustCompile(ipRegex)
 	return re.MatchString(ip)
 }
 
-// Perform whois lookup
+// whois lookup
 func whoisLookup(target, targetDir string, sendTelegram bool, botToken, chatID string) {
 	logMessage("Running Whois Lookup... 🔧")
 	_, err := runCommand(fmt.Sprintf("whois %s > %s/%s", target, targetDir, WhoisFileName))
@@ -153,7 +152,7 @@ func whoisLookup(target, targetDir string, sendTelegram bool, botToken, chatID s
 	}
 }
 
-// Perform nslookup
+// nslookup
 func nslookup(target, targetDir string, sendTelegram bool, botToken, chatID string) {
 	logMessage("Running NSLookup... 🔧")
 	_, err := runCommand(fmt.Sprintf("nslookup %s > %s/%s", target, targetDir, NSLookupFileName))
@@ -167,7 +166,7 @@ func nslookup(target, targetDir string, sendTelegram bool, botToken, chatID stri
 	}
 }
 
-// Perform SSL scan
+// SSL scan
 func sslScan(target, targetDir string, sendTelegram bool, botToken, chatID string) {
 	logMessage("Gathering SSL cert... 🔍")
 
@@ -207,7 +206,7 @@ func subdomains(target, targetDir string, sendTelegram bool, botToken, chatID st
 		return
 	}
 
-	// Combine outputs and remove duplicates
+	// remove duplicates
 	subdomainMap := make(map[string]struct{})
 	for _, line := range append(strings.Split(subfinderOutput, "\n"), strings.Split(assetfinderOutput, "\n")...) {
 		line = strings.TrimSpace(line)
@@ -235,7 +234,6 @@ func subdomains(target, targetDir string, sendTelegram bool, botToken, chatID st
 	}
 }
 
-// Send file content to Telegram
 func sendFileToTelegram(filePath, target, title, botToken, chatID string) {
 	result, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -249,24 +247,24 @@ func sendFileToTelegram(filePath, target, title, botToken, chatID string) {
 	}
 }
 
-// Prompt the user for confirmation
+// Ask  for user input
 func askForConfirmation(prompt string) bool {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(prompt + " (yes/no): ")
 	response, _ := reader.ReadString('\n')
-	response = strings.TrimSpace(response) // Remove whitespace
+	response = strings.TrimSpace(response)
 
 	return response == "yes" || response == "y"
 }
 
-// Main function
+// Main func
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter the domain name or IP address: ")
 	target, _ := reader.ReadString('\n')
-	target = strings.TrimSpace(target) // Remove whitespace
+	target = strings.TrimSpace(target)
 
 	targetDir := createTargetDirectory(target)
 
@@ -280,7 +278,6 @@ func main() {
 	logMessage(fmt.Sprintf("Target: %s", target))
 	logMessage(fmt.Sprintf("Random User Agent: %s", getRandomUserAgent()))
 
-	// Check if the target is an IP address or a domain name
 	var ipAddress string
 	if isValidIP(target) {
 		ipAddress = target
@@ -294,10 +291,8 @@ func main() {
 		logMessage(fmt.Sprintf("Resolved IPv4 Address: %s", ipAddress))
 	}
 
-	// Ask the user if they want to send the messages
 	sendTelegram := botToken != "" && chatID != "" && askForConfirmation("Do you want to send the results to Telegram?")
 
-	// Run tasks sequentially
 	whoisLookup(target, targetDir, sendTelegram, botToken, chatID)
 	nslookup(target, targetDir, sendTelegram, botToken, chatID)
 	sslScan(target, targetDir, sendTelegram, botToken, chatID)
