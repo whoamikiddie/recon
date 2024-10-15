@@ -1,7 +1,0 @@
-Server:		192.168.87.68
-Address:	192.168.87.68#53
-
-Non-authoritative answer:
-Name:	panimalar.ac.in
-Address: 188.245.68.247
-
